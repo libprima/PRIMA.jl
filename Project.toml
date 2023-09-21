@@ -3,8 +3,14 @@ uuid = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr> and contributors"]
 version = "0.1.0"
 
+[deps]
+PRIMA_jll = "eead6e0c-2d5b-5641-a95c-b722de96d551"
+TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
+
 [compat]
-julia = "1"
+julia = "1.6"
+PRIMA_jll = "v0.7.0+1"
+TypeUtils = "0.3"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
