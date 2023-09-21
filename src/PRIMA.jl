@@ -1,40 +1,15 @@
 module PRIMA
 
+using PRIMA_jll
+const libprimac = PRIMA_jll.libprimac
+include("wrappers.jl")
+
 export bobyqa, cobyla, lincoa, newuoa, uobyqa
 
 using TypeUtils
-using PRIMA_jll
-const libprimac = PRIMA_jll.libprimac
 
 #------------------------------------------------------------------------------
 # PUBLIC INTERFACE
-
-# Verbosity level
-@enum Message::Cint begin
-    MSG_NONE = 0 # No messages
-    MSG_EXIT = 1 # Exit reasons
-    MSG_RHO  = 2 # Rho changes
-    MSG_FEVL = 3 # The object/constraint functions get evaluated
-end
-
-# Possible return values
-@enum Status::Cint begin
-    SMALL_TR_RADIUS         =   0
-    FTARGET_ACHIEVED        =   1
-    TRSUBP_FAILED           =   2
-    MAXFUN_REACHED          =   3
-    MAXTR_REACHED           =  20
-    NAN_INF_X               =  -1
-    NAN_INF_F               =  -2
-    NAN_INF_MODEL           =  -3
-    NO_SPACE_BETWEEN_BOUNDS =   6
-    DAMAGING_ROUNDING       =   7
-    ZERO_LINEAR_CONSTRAINT  =   8
-    INVALID_INPUT           = 100
-    ASSERTION_FAILS         = 101
-    VALIDATION_FAILS        = 102
-    MEMORY_ALLOCATION_FAILS = 103
-end
 
 """
     PRIMA.reason(rc) -> str
@@ -43,8 +18,7 @@ yields a textual message explaining `rc`, the code returned by one of the PRIMA
 optimizers.
 
 """
-reason(status::Union{Integer,Status}) =
-    unsafe_string(@ccall libprimac.prima_get_rc_string(Integer(status)::Cint)::Cstring)
+reason(status::Union{Integer,Status}) = unsafe_string(prima_get_rc_string(status))
 
 # The high level wrappers.
 for func in (:bobyqa, :newuoa, :uobyqa, :lincoa, :cobyla)
@@ -107,20 +81,7 @@ function bobyqa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = @ccall libprimac.prima_bobyqa(
-            fp              ::Ptr{Cvoid}, # C-type: prima_obj
-            n               ::Cint,
-            x               ::Ptr{Cdouble}, # n elements
-            fx              ::Ref{Cdouble},
-            xl              ::Ptr{Cdouble}, # const, n elements
-            xu              ::Ptr{Cdouble}, # const, n elements
-            nf              ::Ref{Cint},
-            rhobeg          ::Cdouble,
-            rhoend          ::Cdouble,
-            ftarget         ::Cdouble,
-            maxfun          ::Cint, # maxfun
-            npt             ::Cint,
-            Integer(iprint) ::Cint)::Cint
+        rc = prima_bobyqa(calfun, n, x, f, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc)
     finally
         _pop_wrapper(fw)
@@ -159,18 +120,7 @@ function newuoa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = @ccall libprimac.prima_newuoa(
-            fp              ::Ptr{Cvoid}, # C-type: prima_obj
-            n               ::Cint,
-            x               ::Ptr{Cdouble}, # n elements
-            fx              ::Ref{Cdouble},
-            nf              ::Ref{Cint},
-            rhobeg          ::Cdouble,
-            rhoend          ::Cdouble,
-            ftarget         ::Cdouble,
-            maxfun          ::Cint,
-            npt             ::Cint,
-            Integer(iprint) ::Cint)::Cint
+        rc = prima_newuoa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc)
     finally
         _pop_wrapper(fw)
@@ -207,17 +157,7 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = @ccall libprimac.prima_uobyqa(
-            fp              ::Ptr{Cvoid}, # C-type: prima_obj
-            n               ::Cint,
-            x               ::Ptr{Cdouble}, # n elements
-            fx              ::Ref{Cdouble},
-            nf              ::Ref{Cint},
-            rhobeg          ::Cdouble,
-            rhoend          ::Cdouble,
-            ftarget         ::Cdouble,
-            maxfun          ::Cint,
-            Integer(iprint) ::Cint)::Cint
+        rc = prima_uobyqa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         return (fx[], Int(nf[]), rc)
     finally
         _pop_wrapper(fw)
@@ -255,28 +195,9 @@ function cobyla!(f, x::DenseVector{Cdouble};
 
     try
         # Call low-level optimizer.
-        rc = GC.@preserve nlconstr ineqconstr eqconstr @ccall libprimac.prima_cobyla(
-            m_nlcon         ::Cint,
-            fp              ::Ptr{Cvoid}, # C-type: prima_objcon
-            n               ::Cint,
-            x               ::Ptr{Cdouble}, # n elements
-            fx              ::Ref{Cdouble},
-            cstrv           ::Ref{Cdouble},
-            nlcon_ptr       ::Ptr{Cdouble}, # m_nlcon elements
-            m_ineq          ::Cint,
-            A_ineq          ::Ptr{Cdouble}, # const, m_ineq*n elements
-            b_ineq          ::Ptr{Cdouble}, # const, m_ineq elements
-            m_eq            ::Cint,
-            A_eq            ::Ptr{Cdouble}, # const, m_eq*n elements
-            b_eq            ::Ptr{Cdouble}, # const, m_eq elements
-            xl              ::Ptr{Cdouble}, # const, n elements
-            xu              ::Ptr{Cdouble}, # const, n elements
-            nf              ::Ref{Cint},
-            rhobeg          ::Cdouble,
-            rhoend          ::Cdouble,
-            ftarget         ::Cdouble,
-            maxfun          ::Cint,
-            Integer(iprint) ::Cint)::Cint
+        rc = GC.@preserve nlconstr ineqconstr eqconstr prima_cobyla(m_nlcon, calcfc,
+             n, x, f, cstrv, nlconstr, m_ineq, Aineq, bineq, m_eq, Aeq, beq, xl, xu,
+             nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
         _pop_wrapper(fw)
@@ -311,27 +232,9 @@ function lincoa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw)    # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = GC.@preserve ineqconstr eqconstr @ccall libprimac.prima_lincoa(
-            fp              ::Ptr{Cvoid}, # C-type: prima_objcon
-            n               ::Cint,
-            x               ::Ptr{Cdouble}, # n elements
-            fx              ::Ref{Cdouble},
-            cstrv           ::Ref{Cdouble},
-            m_ineq          ::Cint,
-            A_ineq          ::Ptr{Cdouble}, # const, m_ineq*n elements
-            b_ineq          ::Ptr{Cdouble}, # const, m_ineq elements
-            m_eq            ::Cint,
-            A_eq            ::Ptr{Cdouble}, # const, m_eq*n elements
-            b_eq            ::Ptr{Cdouble}, # const, m_eq elements
-            xl              ::Ptr{Cdouble}, # const, n elements
-            xu              ::Ptr{Cdouble}, # const, n elements
-            nf              ::Ref{Cint},
-            rhobeg          ::Cdouble,
-            rhoend          ::Cdouble,
-            ftarget         ::Cdouble,
-            maxfun          ::Cint,
-            npt             ::Cint,
-            Integer(iprint) ::Cint)::Cint
+        rc = GC.@preserve ineqconstr eqconstr prima_lincoa(calfun, n, x, f,
+             cstrv, m_ineq, Aineq, bineq, m_eq, Aeq, beq, xl, xu, nf,
+             rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
         _pop_wrapper(fw)
