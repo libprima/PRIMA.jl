@@ -17,18 +17,18 @@ variables.
 
 Five algorithms are provided:
 
-- `uobyqa` for *Unconstrained Optimization BY Quadratic Approximations* is for
+- `uobyqa` (*Unconstrained Optimization BY Quadratic Approximations*) is for
   unconstrained optimization, that is `Ω = ℝⁿ`;
 
-- `newuoa` for *Unconstrained Optimization BY Quadratic Approximations* is also
+- `newuoa` (*Unconstrained Optimization BY Quadratic Approximations*) is also
   for unconstrained optimization (according to M.J.D. Powell, `newuoa` is
   superior to `uobyqa`);
 
-- `bobyqa` for *Bounded Optimization BY Quadratic Approximations* is for
-  simple bound constrained problems;
+- `bobyqa` (*Bounded Optimization BY Quadratic Approximations*) is for simple
+  bound constrained problems;
 
-- `cobyla` for *Constrained Optimization BY Linear Approximations* is for
-  general constrained problems;
+- `cobyla` (*Constrained Optimization BY Linear Approximations*) is for general
+  constrained problems;
 
 - `lincoa` is also for general constrained problems but, compared to `cobyla`,
   linear equality and inequality constraints can be explicitly specified for
@@ -45,12 +45,11 @@ x, fx, nf, rc, cstrv = cobyla(f, x0; kwds...)
 x, fx, nf, rc, cstrv = lincoa(f, x0; kwds...)
 ```
 
-where `$optim` is one of `uobyqa`, `newuoa`, `bobyqa`, `cobyla`, or `lincoa`,
-`f` is the objective function, and `x0` is the initial solution. Constraints
-and options may be specified by keywords `kwds...` (see below). The result is
-the 4-tuple `(x, fx, nf,rc)` or the 5-tuple `(x, fx, nf, rc, cstrv)` where `x`
-is the (approximate) solution found by the algorithm, `fx` is the value of
-`f(x)`, `nf` is the number of calls to `f`, `rc` is a status code (an
+where `f` is the objective function and `x0` is the initial solution.
+Constraints and options may be specified by keywords `kwds...` (see below). The
+result is the 4-tuple `(x, fx, nf, rc)` or the 5-tuple `(x, fx, nf, rc, cstrv)`
+where `x` is the (approximate) solution found by the algorithm, `fx` is the
+value of `f(x)`, `nf` is the number of calls to `f`, `rc` is a status code (an
 enumeration value of type `PRIMA.Status`), and `cstrv` is the amount of
 constraint violation.
 
