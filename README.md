@@ -1,10 +1,11 @@
 # PRIMA [![Build Status](https://github.com/emmt/PRIMA.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/PRIMA.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/PRIMA.jl?svg=true)](https://ci.appveyor.com/project/emmt/PRIMA-jl) [![Coverage](https://codecov.io/gh/emmt/PRIMA.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/emmt/PRIMA.jl)
 
-This package is a Julia interface to [PRIMA](https://github.com/libprima/prima)
-a **R**eference **I**mplementation for **P**owell's **M**ethods with
-**M**odernization and **A**melioration which implement algorithms by M.J.D.
-Powell for minimizing a multi-variate objective function possibly under
-constraints and without derivatives.
+This package is a Julia interface to the
+[PRIMA](https://github.com/libprima/prima) library, a **R**eference
+**I**mplementation for **P**owell's methods with **M**odernization and
+**A**melioration, which re-implements algorithms originally by M.J.D. Powell
+for minimizing a multi-variate objective function possibly under constraints
+and without derivatives.
 
 Formally, these algorithms are designed to solve problems of the form:
 
@@ -12,27 +13,57 @@ Formally, these algorithms are designed to solve problems of the form:
 min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
 ```
 
-where `f(x)` is the function to minimize and `Ω ⊆ ℝⁿ` is the set of feasible
-variables.
+where `f: Ω → ℝ` is the function to minimize, `Ω ⊆ ℝⁿ` is the set of feasible
+variables, and `n ≥ 1` is the number of variables. The most general feasible
+set is:
 
-Five algorithms are provided:
+``` julia
+Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+```
+
+where `xl ∈ ℝⁿ` and `xu ∈ ℝⁿ` are lower and upper bounds, `Aₑ` and `bₑ`
+implement linear equality constraints, `Aᵢ` and `bᵢ` implement linear
+inequality constraints, and `c: ℝⁿ → ℝᵐ` implements `m` non-linear constraints.
+
+Five algorithms are provided by the `PRIMA` package:
 
 - `uobyqa` (*Unconstrained Optimization BY Quadratic Approximations*) is for
-  unconstrained optimization, that is `Ω = ℝⁿ`;
+  unconstrained optimization, that is `Ω = ℝⁿ`. According to M.J.D. Powell,
+  `newuoa` is superior to `uobyqa`.
 
-- `newuoa` (*Unconstrained Optimization BY Quadratic Approximations*) is also
-  for unconstrained optimization (according to M.J.D. Powell, `newuoa` is
-  superior to `uobyqa`);
+- `newuoa` is also for unconstrained optimization. According to M.J.D. Powell,
+  `newuoa` is superior to `uobyqa`.
 
 - `bobyqa` (*Bounded Optimization BY Quadratic Approximations*) is for simple
-  bound constrained problems;
+  bound constrained problems, that is `Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu }`.
+
+- `lincoa` (*LINearly Constrained Optimization*) is for constrained
+  optimization problems with bound constraints, linear equality constraints,
+  and linear inequality constraints.
 
 - `cobyla` (*Constrained Optimization BY Linear Approximations*) is for general
-  constrained problems;
+  constrained problems with bound constraints, non-linear constraints, linear
+  equality constraints, and linear inequality constraints.
 
-- `lincoa` is also for general constrained problems but, compared to `cobyla`,
-  linear equality and inequality constraints can be explicitly specified for
-  efficiency.
+All these algorithms are based on trust region strategies and determine the
+change of variables according to an affine or quadratic local approximation of
+the objective function. This approximation interpolates the objective function
+at a given number of points (set by keyword `npt` by some of the algorithms).
+No derivatives of the objective function are needed. These algorithms are well
+suited to problems with a non-analytic objective function that takes time to be
+evaluated.
+
+The table below summarizes the characteristics of the different Powell's
+methods, *"linear"* constraints includes equality and inequality linear
+constraints.
+
+| Method   | Model     | Constraints                |
+|:---------|:----------|:---------------------------|
+| `newuoa` | quadratic | none                       |
+| `uobyqa` | quadratic | none                       |
+| `bobyqa` | quadratic | bounds                     |
+| `lincoa` | quadratic | bounds, linear             |
+| `cobyla` | affine    | bounds, linear, non-linear |
 
 These methods are called as follows:
 
@@ -81,14 +112,8 @@ function objfun(x::Vector{Cdouble})
 end
 ```
 
-The `cobyla` algorithm aims at solving the problem:
-
-``` julia
-min f(x)    s.t.   c(x) ≤ 0
-```
-
-where `f(x)` is the objective function while `c(x)` implements `m` inequality
-constraints. For this algorithm, the user-defined function takes two arguments,
+The `cobyla` algorithm can account for `m` non-linear constraints expressed by
+`c(x) ≤ 0`. For this algorithm, the user-defined function takes two arguments,
 the `x` variables `x` and the values taken by the constraints `cx`, it shall
 overwrite the array of constraints with `cx = c(x)` and return the value of the
 objective function. It has the following signature:
@@ -147,8 +172,9 @@ Assuming `n = length(x)` is the number of variables, then:
   such that `xl ≤ x ≤ xu` (elementwise).
 
 - `nlconstr` (default `nothing`) may be specified as a vector of `m` double
-  precision floating-point values which are passed by `cobyla` to the
-  user-defined function to store `c(x)` the non-linear constraints in `x`.
+  precision floating-point values which are passed to the user-defined function
+  to store `c(x)` the non-linear constraints in `x`. This keyword only exists
+  for `cobyla`.
 
 - `eqconstr` (default `nothing`) may be specified as a tuple `(A,b)`
   to represent linear equality constraints. Feasible variables are
