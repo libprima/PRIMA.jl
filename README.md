@@ -1,11 +1,11 @@
 # PRIMA [![Build Status](https://github.com/emmt/PRIMA.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/PRIMA.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/PRIMA.jl?svg=true)](https://ci.appveyor.com/project/emmt/PRIMA-jl) [![Coverage](https://codecov.io/gh/emmt/PRIMA.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/emmt/PRIMA.jl)
 
-This package is a Julia interface to the
-[PRIMA](https://github.com/libprima/prima) library, a **R**eference
-**I**mplementation for **P**owell's methods with **M**odernization and
-**A**melioration, which re-implements algorithms originally by M.J.D. Powell
-for minimizing a multi-variate objective function possibly under constraints
-and without derivatives.
+This package is a Julia interface to the [PRIMA
+library](https://github.com/libprima/prima), a **R**eference **I**mplementation
+for **P**owell's methods with **M**odernization and **A**melioration, which
+re-implements algorithms originally by M.J.D. Powell for minimizing a
+multi-variate objective function possibly under constraints and without
+derivatives.
 
 Formally, these algorithms are designed to solve problems of the form:
 
@@ -25,7 +25,9 @@ where `xl ∈ ℝⁿ` and `xu ∈ ℝⁿ` are lower and upper bounds, `Aₑ` and
 implement linear equality constraints, `Aᵢ` and `bᵢ` implement linear
 inequality constraints, and `c: ℝⁿ → ℝᵐ` implements `m` non-linear constraints.
 
-Five algorithms are provided by the `PRIMA` package:
+The five Powell's algorithms of the [PRIMA
+library](https://github.com/libprima/prima) are provided by the `PRIMA`
+package:
 
 - `uobyqa` (*Unconstrained Optimization BY Quadratic Approximations*) is for
   unconstrained optimization, that is `Ω = ℝⁿ`. According to M.J.D. Powell,
@@ -45,13 +47,12 @@ Five algorithms are provided by the `PRIMA` package:
   constrained problems with bound constraints, non-linear constraints, linear
   equality constraints, and linear inequality constraints.
 
-All these algorithms are based on trust region strategies and determine the
-change of variables according to an affine or quadratic local approximation of
-the objective function. This approximation interpolates the objective function
-at a given number of points (set by keyword `npt` by some of the algorithms).
-No derivatives of the objective function are needed. These algorithms are well
-suited to problems with a non-analytic objective function that takes time to be
-evaluated.
+All these algorithms are trust region methods where the variables are updated
+according to an affine or quadratic local approximation interpolating the
+objective function at a given number of points (set by keyword `npt` by some of
+the algorithms). No derivatives of the objective function are needed. These
+algorithms are well suited to problems with a non-analytic objective function
+that takes time to be evaluated.
 
 The table below summarizes the characteristics of the different Powell's
 methods, *"linear"* constraints includes equality and inequality linear
