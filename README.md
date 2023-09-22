@@ -164,7 +164,7 @@ Assuming `n = length(x)` is the number of variables, then:
   returned.
 
 - `npt` (default value `2n + 1`) is the number of points used to approximate
-  the local behavior of the objective function and such that `n + 1 ≤ npt ≤
+  the local behavior of the objective function and such that `n + 2 ≤ npt ≤
   (n + 1)*(n + 2)/2`. The default value corresponds to the one recommended by
   M.J.D. Powell.
 
