@@ -126,7 +126,7 @@ using Test, TypeUtils
                                                       npt = 2n + 1,
                                                       iprint = PRIMA.MSG_EXIT)
         msg = PRIMA.reason(rc)
-        println("x = $x, f(x) = $fx, cstrv = $cstrv, nlconstr = $nlconstr, rc = $rc, msg = '$msg', evals = $nf")
+        println("x = $x, f(x) = $fx, cstrv = $cstrv, rc = $rc, msg = '$msg', evals = $nf")
         @test abs(x[1] - 3) ≤ 2e-2 && abs(x[2] - 2) ≤ 2e-2
         @test f(x) ≈ fx
         @test x0 == x0_sav
