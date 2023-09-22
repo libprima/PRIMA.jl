@@ -20,6 +20,26 @@ function main()
     build!(ctx)
 
     path = options["general"]["output_file_path"]
+    code = readlines(path)
+    for repl in [
+        # Simplify the name of non-exported but public symbols (they will be
+        # prefixed by the module name).
+        r"\bprima_message\b" => "Message",
+        r"\bprima_rc\b" => "Status",
+        r"\bPRIMA_" => "",
+        # Make enum signed (see PRIMA library doc. about negative `iprint`
+        # values).
+        r"^(\s*@enum\s+\w+)\s*::\s*U(Int[0-9]*)\s+begin\s*$" => s"\1::\2 begin",
+        # Remove some useless code.
+        r"^\s*const\s+PRIMAC_API\s*=.*$" => "",
+        ]
+        for i in eachindex(code)
+            code[i] = replace(code[i], repl)
+        end
+    end
+    open(path, "w") do io
+        foreach(line -> println(io, line), code)
+    end
     format_file(path, YASStyle())
     return nothing
 end

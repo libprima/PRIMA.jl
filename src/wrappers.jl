@@ -27,9 +27,15 @@ function prima_get_rc_string(rc)
     @ccall libprimac.prima_get_rc_string(rc::Cint)::Cstring
 end
 
+# typedef void ( * prima_obj ) ( const double x [ ] , double * f )
+const prima_obj = Ptr{Cvoid}
+
+# typedef void ( * prima_objcon ) ( const double x [ ] , double * f , double constr [ ] )
+const prima_objcon = Ptr{Cvoid}
+
 function prima_bobyqa(calfun, n, x, f, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt,
                       iprint)
-    @ccall libprimac.prima_bobyqa(calfun::Ptr{Cvoid}, n::Cint, x::Ptr{Cdouble},
+    @ccall libprimac.prima_bobyqa(calfun::prima_obj, n::Cint, x::Ptr{Cdouble},
                                   f::Ptr{Cdouble}, xl::Ptr{Cdouble}, xu::Ptr{Cdouble},
                                   nf::Ptr{Cint}, rhobeg::Cdouble, rhoend::Cdouble,
                                   ftarget::Cdouble, maxfun::Cint, npt::Cint,
@@ -37,14 +43,14 @@ function prima_bobyqa(calfun, n, x, f, xl, xu, nf, rhobeg, rhoend, ftarget, maxf
 end
 
 function prima_newuoa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-    @ccall libprimac.prima_newuoa(calfun::Ptr{Cvoid}, n::Cint, x::Ptr{Cdouble},
+    @ccall libprimac.prima_newuoa(calfun::prima_obj, n::Cint, x::Ptr{Cdouble},
                                   f::Ptr{Cdouble}, nf::Ptr{Cint}, rhobeg::Cdouble,
                                   rhoend::Cdouble, ftarget::Cdouble, maxfun::Cint,
                                   npt::Cint, iprint::Cint)::Cint
 end
 
 function prima_uobyqa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
-    @ccall libprimac.prima_uobyqa(calfun::Ptr{Cvoid}, n::Cint, x::Ptr{Cdouble},
+    @ccall libprimac.prima_uobyqa(calfun::prima_obj, n::Cint, x::Ptr{Cdouble},
                                   f::Ptr{Cdouble}, nf::Ptr{Cint}, rhobeg::Cdouble,
                                   rhoend::Cdouble, ftarget::Cdouble, maxfun::Cint,
                                   iprint::Cint)::Cint
@@ -52,7 +58,7 @@ end
 
 function prima_cobyla(m_nlcon, calcfc, n, x, f, cstrv, nlconstr, m_ineq, Aineq, bineq, m_eq,
                       Aeq, beq, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
-    @ccall libprimac.prima_cobyla(m_nlcon::Cint, calcfc::Ptr{Cvoid}, n::Cint,
+    @ccall libprimac.prima_cobyla(m_nlcon::Cint, calcfc::prima_objcon, n::Cint,
                                   x::Ptr{Cdouble}, f::Ptr{Cdouble}, cstrv::Ptr{Cdouble},
                                   nlconstr::Ptr{Cdouble}, m_ineq::Cint, Aineq::Ptr{Cdouble},
                                   bineq::Ptr{Cdouble}, m_eq::Cint, Aeq::Ptr{Cdouble},
@@ -63,7 +69,7 @@ end
 
 function prima_lincoa(calfun, n, x, f, cstrv, m_ineq, Aineq, bineq, m_eq, Aeq, beq, xl, xu,
                       nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-    @ccall libprimac.prima_lincoa(calfun::Ptr{Cvoid}, n::Cint, x::Ptr{Cdouble},
+    @ccall libprimac.prima_lincoa(calfun::prima_obj, n::Cint, x::Ptr{Cdouble},
                                   f::Ptr{Cdouble}, cstrv::Ptr{Cdouble}, m_ineq::Cint,
                                   Aineq::Ptr{Cdouble}, bineq::Ptr{Cdouble}, m_eq::Cint,
                                   Aeq::Ptr{Cdouble}, beq::Ptr{Cdouble}, xl::Ptr{Cdouble},
