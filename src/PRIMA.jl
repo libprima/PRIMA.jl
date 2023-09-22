@@ -46,24 +46,10 @@ optimizers.
 reason(status::Union{Integer,Status}) =
     unsafe_string(@ccall libprimac.prima_get_rc_string(Integer(status)::Cint)::Cstring)
 
-# The high level wrappers.
+# The high level wrappers. First the methods, then their documentation.
 for func in (:bobyqa, :newuoa, :uobyqa, :lincoa, :cobyla)
     func! = Symbol(func, "!")
     @eval begin
-        @doc """
-            $($func)(f, x0; kwds...) -> (x, fx, nf, rc)
-
-        attempts to minimize objective function `f` by the
-        [`PRIMA.$($func)!`](@ref) method starting with variables `x0` (which
-        are left unchanged on output). The result is the 4-tuple `(x, fx, nf,
-        rc)` with `x` the (approximate) solution found, `fx` the value of
-        `f(x)`, `nf` the number of calls to `f`, and `rc` a status code (see
-        [`PRIMA.Status`](@ref) and [`PRIMA.reason`](@ref)).
-
-        See the documention of [`PRIMA.$($func)!`](@ref) for a description of
-        the method and of the allowed keywords `kwds...`.
-
-        """
         function $func(f, x0::AbstractVector{<:Real}; kwds...)
             x = copyto!(Vector{Cdouble}(undef, length(x0)), x0)
             return x, $func!(f, x; kwds...)...
@@ -71,18 +57,239 @@ for func in (:bobyqa, :newuoa, :uobyqa, :lincoa, :cobyla)
     end
 end
 
+const _doc_2_inputs_4_outputs = """
+The arguments are the objective function `f` and the initial variables `x0`
+which are left unchanged on output. The returned value is the 4-tuple `(x, fx,
+nf, rc)` with `x` the (approximate) solution, `fx` the value of `f(x)`, `nf`
+the number of calls to `f`, and `rc` a status code (see [`PRIMA.Status`](@ref)
+and [`PRIMA.reason`](@ref)).
+"""
+
+const _doc_2_inputs_5_outputs = """
+The arguments are the objective function `f` and the initial variables `x0`
+which are left unchanged on output. The returned value is the 5-tuple `(x, fx,
+nf, rc, cstrv)` with `x` the (approximate) solution, `fx` the value of `f(x)`,
+`nf` the number of calls to `f`, `rc` a status code (see [`PRIMA.Status`](@ref)
+and [`PRIMA.reason`](@ref)), and `cstrv` is the amount of constraint violation.
+"""
+
+const _doc_common_keywords = """
+- `rhobeg` (default value `1.0`) is the initial radius of the trust region.
+
+- `rhoend` (default value `rhobeg*1e-4`) is the final radius of the trust
+  region used to decide whether the algorithm has converged in the variables.
+
+- `ftarget` (default value `-Inf`) is another convergence setting. The
+  algorithm is stopped as soon as `f(x) ≤ ftarget` and the status
+  `PRIMA.FTARGET_ACHIEVED` is returned.
+
+- `maxfun` (default `100n`) is the maximum number of function evaluations
+  allowed for the algorithm. If the number of calls to `f(x)` exceeds this
+  value, the algorithm is stopped and the status `PRIMA.MAXFUN_REACHED` is
+  returned.
+
+- `iprint` (default value `PRIMA.MSG_NONE`) sets the level of verbosity of the
+   algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
+   `PRIMA.MSG_FEVL`.
+"""
+
+const _doc_npt = """
+- `npt` (default value `2n + 1`) is the number of points used to approximate
+  the local behavior of the objective function and such that `n + 1 ≤ npt ≤
+  (n + 1)*(n + 2)/2`. The default value corresponds to the one recommended by
+  M.J.D. Powell.
+"""
+
+const _doc_bound_constraints = """
+- `xl` and `xu` (default `fill(+Inf, n)` and `fill(-Inf, n)`) are the
+  elementwise lower and upper bounds for the variables. Feasible variables are
+  such that `xl ≤ x ≤ xu` (elementwise).
+"""
+
+const _doc_nonlinear_constraints = """
+- `nlconstr` (default `nothing`) may be specified as a vector of `m` double
+  precision floating-point values which are passed to the user-defined function
+  to store `c(x)` the non-linear constraints in `x`. This keyword only exists
+  for `cobyla`.
+"""
+
+const _doc_linear_constraints = """
+- `eqconstr` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)`
+  to represent linear equality constraints. Feasible variables are
+  such that `Aₑ'⋅x = bₑ` holds elementwise.
+
+- `neqconstr` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
+  represent linear inequality constraints. Feasible variables are such that
+  `Aᵢ'⋅x ≤ bᵢ` holds elementwise.
+"""
+
+"""
+    uobyqa(f, x0; kwds...) -> (x, fx, nf, rc)
+
+approximately solves the unconstrained optimization problem:
+
+    min f(x)    s.t.   x ∈ ℝⁿ
+
+by M.J.D. Powell's UOBYQA (for \"Unconstrained Optimization BY Quadratic
+Approximations\") method. This algorithm is based on a trust region method
+where variables are updated according to a quadratic local approximation
+interpolating the objective function. No derivatives of the objective function
+are needed.
+
+$(_doc_2_inputs_4_outputs)
+
+The objective function takes a single argument, the variables `x`, and returns
+the function value, it shall implement the following signature:
+
+    f(x::Vector{Cdouble})::Real
+
+Allowed keywords are (`n = length(x)` is the number of variables):
+
+$(_doc_common_keywords)
+
+""" uobyqa
+
+"""
+    newuoa(f, x0; kwds...) -> (x, fx, nf, rc)
+
+approximately solves the unconstrained optimization problem:
+
+    min f(x)    s.t.   x ∈ ℝⁿ
+
+by M.J.D. Powell's NEWUOA method. This algorithm is based on a trust region
+method where variables are updated according to a quadratic local approximation
+interpolating the objective function at a number of `npt` points. No
+derivatives of the objective function are needed.
+
+$(_doc_2_inputs_4_outputs)
+
+The objective function takes a single argument, the variables `x`, and returns
+the function value, it shall implement the following signature:
+
+    f(x::Vector{Cdouble})::Real
+
+Allowed keywords are (`n = length(x)` is the number of variables):
+
+$(_doc_common_keywords)
+
+$(_doc_npt)
+
+""" newuoa
+
+"""
+    bobyqa(f, x0; kwds...) -> (x, fx, nf, rc)
+
+approximately solves the bound constrained optimization problem:
+
+    min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+
+with
+
+   Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu }
+
+by M.J.D. Powell's BOBYQA (for \"Bounded Optimization BY Quadratic
+Approximations\") method. This algorithm is based on a trust region method
+where variables are updated according to a quadratic local approximation
+interpolating the objective function at a number of `npt` points. No
+derivatives of the objective function are needed.
+
+$(_doc_2_inputs_4_outputs)
+
+The objective function takes a single argument, the variables `x`, and returns
+the function value, it shall implement the following signature:
+
+    f(x::Vector{Cdouble})::Real
+
+Allowed keywords are (`n = length(x)` is the number of variables):
+
+$(_doc_common_keywords)
+
+$(_doc_npt)
+
+$(_doc_bound_constraints)
+
+""" bobyqa
+
+"""
+    cobyla(f, x0; kwds...) -> (x, fx, nf, rc, cstrv)
+
+approximately solves the constrained optimization problem:
+
+    min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+
+with
+
+    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+
+by M.J.D. Powell's COBYLA (for \"Constrained Optimization BY Linear
+Approximations\") method. This algorithm is based on a trust region methood
+where variables are updated according to a linear local approximation of the
+objective function. No derivatives of the objective function are needed.
+
+$(_doc_2_inputs_5_outputs)
+
+The objective function takes two arguments, the variables `x` and a vector `cx`
+to store the non-linear constraints, and returns the function value, it shall
+implement the following signature:
+
+    f(x::Vector{Cdouble}, cx::vector{Cdouble})::Real
+
+where the e,tries of `cx` are to be overwritten by the non-linear consttaints
+`c(x)`.
+
+Allowed keywords are (`n = length(x)` is the number of variables):
+
+$(_doc_common_keywords)
+
+$(_doc_bound_constraints)
+
+$(_doc_linear_constraints)
+
+$(_doc_nonlinear_constraints)
+
+""" cobyla
+
+"""
+    lincoa(f, x0; kwds...) -> (x, fx, nf, rc, cstrv)
+
+approximately solves the constrained optimization problem:
+
+    min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+
+with
+
+    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, and Aᵢ⋅x ≤ bᵢ }
+
+by M.J.D. Powell's LINCOA (for \"LINearly Constrained Optimization\") method.
+This algorithm is based on a trust region methood where variables are updated
+according to a quadratic local approximation of the objective function. No
+derivatives of the objective function are needed.
+
+$(_doc_2_inputs_5_outputs)
+
+The objective function takes a single argument, the variables `x`, and returns
+the function value, it shall implement the following signature:
+
+    f(x::Vector{Cdouble})::Real
+
+Allowed keywords are (`n = length(x)` is the number of variables):
+
+$(_doc_common_keywords)
+
+$(_doc_npt)
+
+$(_doc_bound_constraints)
+
+$(_doc_linear_constraints)
+
+""" lincoa
+
 """
     PRIMA.bobyqa!(f, x; kwds...) -> (fx, nf, rc)
 
-attempts to minimize objective function `f` by M.J.D. Powell's BOBYQA method
-for "Bounded Optimization BY Quadratic Approximations" and without derivatives.
-On entry, argument `x` is a dense vector of double precision value with the
-initial variables; on return, `x` is overwritten by an approximate solution and
-the 3-tuple `(fx, nf, rc)` is returned with, `fx` the value of `f(x)`, `nf` the
-number of calls to `f`, and `rc` a status code (see [`PRIMA.Status`](@ref) and
-[`PRIMA.reason`](@ref)).
-
-Call [`PRIMA.bobyqa`](@ref) for a version that preserves the initial variables.
+in-place version of [`PRIMA.bobyqa`](@ref) which to see for details. On entry,
+argument `x` is a dense vector of double precision value with the initial
+variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function bobyqa!(f, x::DenseVector{Cdouble};
@@ -130,15 +337,9 @@ end
 """
     PRIMA.newuoa!(f, x; kwds...) -> (fx, nf, rc)
 
-attempts to minimize objective function `f` by M.J.D. Powell's NEWUOA method
-for unconstrained optimization without derivatives. On entry, argument `x` is
-a dense vector of double precision value with the initial variables; on return,
-`x` is overwritten by an approximate solution and the 3-tuple `(fx, nf, rc)` is
-returned with, `fx` the value of `f(x)`, `nf` the number of calls to `f`, and
-`rc` a status code (see [`PRIMA.Status`](@ref) and [`PRIMA.reason`](@ref)).
-
-Call [`PRIMA.newuoa`](@ref) for a version that preserves the
-initial variables.
+in-place version of [`PRIMA.newuoa`](@ref) which to see for details. On entry,
+argument `x` is a dense vector of double precision value with the initial
+variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function newuoa!(f, x::DenseVector{Cdouble};
@@ -180,15 +381,9 @@ end
 """
     PRIMA.uobyqa!(f, x; kwds...) -> (fx, nf, rc)
 
-attempts to minimize objective function `f` by M.J.D. Powell's UOBYQA method
-for "Unconstrained Optimization BY Quadratic Approximation" and without
-derivatives. On entry, argument `x` is a dense vector of double precision value
-with the initial variables; on return, `x` is overwritten by an approximate
-solution and the 3-tuple `(fx, nf, rc)` is returned with, `fx` the value of
-`f(x)`, `nf` the number of calls to `f`, and `rc` a status code (see
-[`PRIMA.Status`](@ref) and [`PRIMA.reason`](@ref)).
-
-Call [`PRIMA.uobyqa`](@ref) for a version that preserves the initial variables.
+in-place version of [`PRIMA.uobyqa`](@ref) which to see for details. On entry,
+argument `x` is a dense vector of double precision value with the initial
+variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function uobyqa!(f, x::DenseVector{Cdouble};
@@ -226,6 +421,14 @@ end
 
 const LinearConstraint = Tuple{DenseMatrix{Cdouble},DenseVector{Cdouble}}
 
+"""
+    PRIMA.cobyla!(f, x; kwds...) -> (fx, nf, rc)
+
+in-place version of [`PRIMA.cobyla`](@ref) which to see for details. On entry,
+argument `x` is a dense vector of double precision value with the initial
+variables; on return, `x` is overwritten by an approximate solution.
+
+"""
 function cobyla!(f, x::DenseVector{Cdouble};
                  nlconstr::Union{DenseVector{Cdouble},Nothing} = nothing,
                  ineqconstr::Union{LinearConstraint,Nothing} = nothing,
@@ -283,6 +486,14 @@ function cobyla!(f, x::DenseVector{Cdouble};
     end
 end
 
+"""
+    PRIMA.lincoa!(f, x; kwds...) -> (fx, nf, rc)
+
+in-place version of [`PRIMA.lincoa`](@ref) which to see for details. On entry,
+argument `x` is a dense vector of double precision value with the initial
+variables; on return, `x` is overwritten by an approximate solution.
+
+"""
 function lincoa!(f, x::DenseVector{Cdouble};
                  ineqconstr::Union{LinearConstraint,Nothing} = nothing,
                  eqconstr::Union{LinearConstraint,Nothing} = nothing,
