@@ -288,7 +288,7 @@ function bobyqa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_bobyqa(calfun, n, x, f, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        rc = prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc)
     finally
         _pop_wrapper(fw)
@@ -321,7 +321,7 @@ function newuoa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_newuoa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        rc = prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc)
     finally
         _pop_wrapper(fw)
@@ -352,7 +352,7 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_uobyqa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        rc = prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         return (fx[], Int(nf[]), rc)
     finally
         _pop_wrapper(fw)
@@ -398,9 +398,9 @@ function cobyla!(f, x::DenseVector{Cdouble};
 
     try
         # Call low-level optimizer.
-        rc = GC.@preserve nlconstr ineqconstr eqconstr prima_cobyla(m_nlcon, calcfc,
-             n, x, f, cstrv, nlconstr, m_ineq, Aineq, bineq, m_eq, Aeq, beq, xl, xu,
-             nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        rc = GC.@preserve nlconstr ineqconstr eqconstr prima_cobyla(m_nlcon, fp,
+             n, x, fx, cstrv, nlcon_ptr, m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq,
+            xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
         _pop_wrapper(fw)
@@ -443,8 +443,8 @@ function lincoa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw)    # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = GC.@preserve ineqconstr eqconstr prima_lincoa(calfun, n, x, f,
-             cstrv, m_ineq, Aineq, bineq, m_eq, Aeq, beq, xl, xu, nf,
+        rc = GC.@preserve ineqconstr eqconstr prima_lincoa(fp, n, x, fx,
+             cstrv, m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq, xl, xu, nf,
              rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
