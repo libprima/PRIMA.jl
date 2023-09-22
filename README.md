@@ -183,3 +183,35 @@ Assuming `n = length(x)` is the number of variables, then:
 - `neqconstr` (default `nothing`) may be specified as a tuple `(A,b)` to
   represent linear inequality constraints. Feasible variables are such that
   `A'⋅x ≤ b` holds elementwise.
+
+## References
+
+The following 5 first references respectively describe `cobyla`, `uobyqa`,
+`newuoa`, `bobyqa`, and `lincoa`; the last reference summarizes all these
+methods and provides a good and comprehensive introduction to Powell's
+algorithms.
+
+1. M.J.D. Powell, *"A direct search optimization method that models the
+   objective and constraint functions by linear interpolation"* in Advances in
+   Optimization and Numerical Analysis Mathematics and Its Applications, vol.
+   **275**, pp. 51-67 (1994).
+
+2. M.J.D. Powell, *"UOBYQA: unconstrained optimization by quadratic
+   approximation"*, in Mathematical Programming, vol. **92**, pp. 555-582
+   (2002) [DOI](https://doi.org/10.1007/s101070100290).
+
+3. M.J.D. Powell, *"The NEWUOA software for unconstrained optimization without
+   derivatives"*, in Nonconvex Optimization and Its Applications, pp. 255-297
+   (2006).
+
+4. M.J.D. Powell, *"The BOBYQA algorithm for bound constrained optimization
+   without derivatives"*, Department of Applied Mathematics and Theoretical
+   Physics, Cambridge, England, Technical Report NA2009/06 (2009).
+
+5. M.J.D. Powell, *"On fast trust region methods for quadratic models with
+   linear constraints"*, Technical Report of the Department of Applied
+   Mathematics and Theoretical Physics, Cambridge University (2014).
+
+6. T.M. Ragonneau & Z. Zhang, *"PDFO: A Cross-Platform Package for Powell's
+   Derivative-Free Optimization Solvers"*,
+   [arXiv](https://doi.org/10.48550/arXiv.2302.13246) (2023).
