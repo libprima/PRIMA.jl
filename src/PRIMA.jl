@@ -69,7 +69,7 @@ const _doc_common_keywords = """
 
 const _doc_npt = """
 - `npt` (default value `2n + 1`) is the number of points used to approximate
-  the local behavior of the objective function and such that `n + 1 ≤ npt ≤
+  the local behavior of the objective function and such that `n + 2 ≤ npt ≤
   (n + 1)*(n + 2)/2`. The default value corresponds to the one recommended by
   M.J.D. Powell.
 """
@@ -280,7 +280,7 @@ function bobyqa!(f, x::DenseVector{Cdouble};
     @assert length(xu) == n
     @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
     @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-    @assert n + 1 ≤ npt ≤ (n + 1)*(n + 2)/2
+    @assert n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2
 
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
@@ -313,7 +313,7 @@ function newuoa!(f, x::DenseVector{Cdouble};
     n = length(x) # number of variables
     @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
     @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-    @assert n + 1 ≤ npt ≤ (n + 1)*(n + 2)/2
+    @assert n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2
 
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
@@ -431,7 +431,7 @@ function lincoa!(f, x::DenseVector{Cdouble};
     @assert length(xu) == n
     @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
     @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-    @assert n + 1 ≤ npt ≤ (n + 1)*(n + 2)/2
+    @assert n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2
 
     m_eq, A_eq, b_eq = _get_linear_constraints(eqconstr, n)
     m_ineq, A_ineq, b_ineq = _get_linear_constraints(ineqconstr, n)
