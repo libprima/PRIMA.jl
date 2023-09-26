@@ -592,7 +592,7 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
     return m, A_, b_
 end
 
-_get_nonlinear_constraints(::Nothing, n::Integer) =
+_get_nonlinear_constraints(::Nothing) =
     0, NullVector{Cdouble}()
 _get_nonlinear_constraints(c::AbstractVector{<:Real}) =
     length(c), _dense_array(Cdouble, c)
@@ -601,7 +601,7 @@ for (uplo, def) in ((:lower, typemin),
                     (:upper, typemax))
     func = Symbol("_get_$(uplo)_bound")
     @eval begin
-        $func(::Nothing, n::Integer) = fill(def(Cdouble), n)
+        $func(::Nothing, n::Integer) = fill($def(Cdouble), n)
         function $func(b::AbstractVector, n::Integer)
             Base.has_offset_axes(b) && error(
                 $("$uplo bound must have 1-based indices"))
