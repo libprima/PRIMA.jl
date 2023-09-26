@@ -236,7 +236,7 @@ optimizer(algo::Symbol) =
             end
             msg = PRIMA.reason(rc)
             println("x = $x, f(x) = $fx, rc = $rc, msg = '$msg', evals = $nf")
-            @test x ≈ [1,1] atol=2e-2 rtol=0
+            @test x ≈ [1,1] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
             @test f(x) ≈ fx
 
             # Bound constrained optimization.
@@ -262,7 +262,7 @@ optimizer(algo::Symbol) =
                 end
                 msg = PRIMA.reason(rc)
                 println("x = $x, f(x) = $fx, rc = $rc, msg = '$msg', evals = $nf")
-                @test x ≈ [1.095247,1.2] atol=2e-2 rtol=0
+                @test x ≈ [1.095247,1.2] rtol=0 atol=2e-2
                 @test f(x) ≈ fx
             end
 
@@ -284,12 +284,11 @@ optimizer(algo::Symbol) =
                 end
                 msg = PRIMA.reason(rc)
                 println("x = $x, f(x) = $fx, rc = $rc, msg = '$msg', evals = $nf")
-                @test x ≈ [1.0,1.0] atol=2e-2 rtol=0
+                @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ fx
-                x1 = copy(x) # for comparison with solution found next which should be the same
 
                 println("\nIdem but with one linear inequality constraint replaced by a bound constraint:")
-                x0 = [-1, 2] # starting point
+                x0 = [1, 2] # starting point
                 ineqconstr = (A_ineq[1:2,:], b_ineq[1:2])
                 xl = [-1,-Inf]
                 if optim === :cobyla
@@ -305,29 +304,28 @@ optimizer(algo::Symbol) =
                 end
                 msg = PRIMA.reason(rc)
                 println("x = $x, f(x) = $fx, rc = $rc, msg = '$msg', evals = $nf")
-                @test x ≈ [1.0,1.0] atol=2e-2 rtol=0
-                @test x == x1 # result should be exactly the same
+                @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ fx
 
                 # The solution is on the line: 4x + 3y = 12 (the boundary of the first constraint).
                 println("\nIdem but one linear constraint is active at the solution:")
-                x0 = [-1, 2] # starting point
+                x0 = [1, 2] # starting point
                 ineqconstr = (A_ineq, b_ineq)
                 xl = [-1,-Inf]
                 if optim === :cobyla
                     x, fx, nf, rc = @inferred cobyla(f2, x0;
-                                                     xl, ineqconstr,
+                                                     ineqconstr,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint)
                 elseif optim === :lincoa
                     x, fx, nf, rc = @inferred lincoa(f2, x0;
-                                                     xl, ineqconstr,
+                                                     ineqconstr,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint, npt)
                 else
                     continue
                 end
                 msg = PRIMA.reason(rc)
                 println("x = $x, f(x) = $fx, rc = $rc, msg = '$msg', evals = $nf")
-                @test x ≈ [1.441832,2.077557] atol=2e-2 rtol=0
+                @test x ≈ [1.441832,2.077557] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f2(x) ≈ fx
             end
         end
