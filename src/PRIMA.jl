@@ -50,7 +50,7 @@ and [`PRIMA.reason`](@ref)), and `cstrv` is the amount of constraint violation.
 const _doc_common_keywords = """
 - `rhobeg` (default value `1.0`) is the initial radius of the trust region.
 
-- `rhoend` (default value `rhobeg*1e-4`) is the final radius of the trust
+- `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
   region used to decide whether the algorithm has converged in the variables.
 
 - `ftarget` (default value `-Inf`) is another convergence setting. The
@@ -270,7 +270,7 @@ function bobyqa!(f, x::DenseVector{Cdouble};
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
-                 rhoend::Real = rhobeg*1e-4,
+                 rhoend::Real = 1e-4*rhobeg,
                  iprint::Union{Integer,Message} = MSG_NONE,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
@@ -305,7 +305,7 @@ variables; on return, `x` is overwritten by an approximate solution.
 """
 function newuoa!(f, x::DenseVector{Cdouble};
                  rhobeg::Real = 1.0,
-                 rhoend::Real = rhobeg*1e-4,
+                 rhoend::Real = 1e-4*rhobeg,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1,
@@ -338,7 +338,7 @@ variables; on return, `x` is overwritten by an approximate solution.
 """
 function uobyqa!(f, x::DenseVector{Cdouble};
                  rhobeg::Real = 1.0,
-                 rhoend::Real = rhobeg*1e-4,
+                 rhoend::Real = 1e-4*rhobeg,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
@@ -384,7 +384,7 @@ function cobyla!(f, x::DenseVector{Cdouble};
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
-                 rhoend::Real = rhobeg*1e-4,
+                 rhoend::Real = 1e-4*rhobeg,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
@@ -428,7 +428,7 @@ function lincoa!(f, x::DenseVector{Cdouble};
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
-                 rhoend::Real = rhobeg*1e-4,
+                 rhoend::Real = 1e-4*rhobeg,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1,

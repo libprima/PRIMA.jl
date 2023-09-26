@@ -1,10 +1,10 @@
 # PRIMA [![Build Status](https://github.com/emmt/PRIMA.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/emmt/PRIMA.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/PRIMA.jl?svg=true)](https://ci.appveyor.com/project/emmt/PRIMA-jl) [![Coverage](https://codecov.io/gh/emmt/PRIMA.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/emmt/PRIMA.jl)
 
 This package is a Julia interface to the [PRIMA
-library](https://github.com/libprima/prima), a **R**eference **I**mplementation
-for **P**owell's methods with **M**odernization and **A**melioration, by
-[Zaikun Zhang](https://www.zhangzk.net/) who re-implemented and improved
-algorithms originally by [M.J.D.
+library](https://github.com/libprima/prima), a *Reference Implementation for
+Powell's Methods with Modernization and Amelioration*, by [Zaikun
+Zhang](https://www.zhangzk.net/) who re-implemented and improved algorithms
+originally by [M.J.D.
 Powell](https://en.wikipedia.org/wiki/Michael_J._D._Powell) for minimizing a
 multi-variate objective function possibly under constraints and without
 derivatives.
@@ -148,7 +148,7 @@ Assuming `n = length(x)` is the number of variables, then:
 
 - `rhobeg` (default value `1.0`) is the initial radius of the trust region.
 
-- `rhoend` (default value `rhobeg*1e-4`) is the final radius of the trust
+- `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
   region. The algorithm stops when the trust region radius becomes smaller or
   equal `rhoend` and the status `PRIMA.SMALL_TR_RADIUS` is returned.
 
@@ -187,12 +187,12 @@ Assuming `n = length(x)` is the number of variables, then:
   represent linear inequality constraints. Feasible variables are such that
   `Aᵢ⋅x ≤ bᵢ` holds elementwise.
 
+
 ## References
 
-The following 5 first references respectively describe `cobyla`, `uobyqa`,
-`newuoa`, `bobyqa`, and `lincoa`; the last reference summarizes all these
-methods and provides a good and comprehensive introduction to Powell's
-algorithms.
+The following 5 first references respectively describe Powell's algorithms
+`cobyla`, `uobyqa`, `newuoa`, `bobyqa`, and `lincoa` while the last reference
+provides a good and comprehensive introduction to these algorithms.
 
 1. M.J.D. Powell, *"A direct search optimization method that models the
    objective and constraint functions by linear interpolation"* in Advances in
