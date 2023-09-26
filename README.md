@@ -2,8 +2,10 @@
 
 This package is a Julia interface to the [PRIMA
 library](https://github.com/libprima/prima), a **R**eference **I**mplementation
-for **P**owell's methods with **M**odernization and **A**melioration, which
-re-implements algorithms originally by M.J.D. Powell for minimizing a
+for **P**owell's methods with **M**odernization and **A**melioration, by
+[Zaikun Zhang](https://www.zhangzk.net/) who re-implemented and improved
+algorithms originally by [M.J.D.
+Powell](https://en.wikipedia.org/wiki/Michael_J._D._Powell) for minimizing a
 multi-variate objective function possibly under constraints and without
 derivatives.
 
@@ -30,8 +32,7 @@ library](https://github.com/libprima/prima) are provided by the `PRIMA`
 package:
 
 - `uobyqa` (*Unconstrained Optimization BY Quadratic Approximations*) is for
-  unconstrained optimization, that is `Ω = ℝⁿ`. According to M.J.D. Powell,
-  `newuoa` is superior to `uobyqa`.
+  unconstrained optimization, that is `Ω = ℝⁿ`.
 
 - `newuoa` is also for unconstrained optimization. According to M.J.D. Powell,
   `newuoa` is superior to `uobyqa`.
@@ -55,8 +56,8 @@ algorithms are well suited to problems with a non-analytic objective function
 that takes time to be evaluated.
 
 The table below summarizes the characteristics of the different Powell's
-methods, *"linear"* constraints includes equality and inequality linear
-constraints.
+methods (*"linear"* constraints includes equality and inequality linear
+constraints).
 
 | Method   | Model     | Constraints                |
 |:---------|:----------|:---------------------------|
@@ -148,10 +149,11 @@ Assuming `n = length(x)` is the number of variables, then:
 - `rhobeg` (default value `1.0`) is the initial radius of the trust region.
 
 - `rhoend` (default value `rhobeg*1e-4`) is the final radius of the trust
-  region used to decide whether the algorithm has converged in the variables.
+  region. The algorithm stops when the trust region radius becomes smaller or
+  equal `rhoend` and the status `PRIMA.SMALL_TR_RADIUS` is returned.
 
 - `ftarget` (default value `-Inf`) is another convergence setting. The
-  algorithm is stopped as soon as `f(x) ≤ ftarget` and the status
+  algorithm stops as soon as `f(x) ≤ ftarget` and the status
   `PRIMA.FTARGET_ACHIEVED` is returned.
 
 - `iprint` (default value `PRIMA.MSG_NONE`) sets the level of verbosity of the
@@ -177,13 +179,13 @@ Assuming `n = length(x)` is the number of variables, then:
   to store `c(x)` the non-linear constraints in `x`. This keyword only exists
   for `cobyla`.
 
-- `eqconstr` (default `nothing`) may be specified as a tuple `(A,b)`
-  to represent linear equality constraints. Feasible variables are
-  such that `A'⋅x = b` holds elementwise.
+- `eqconstr` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
+  represent linear equality constraints. Feasible variables are such that
+  `Aₑ⋅x = bₑ` holds elementwise.
 
-- `neqconstr` (default `nothing`) may be specified as a tuple `(A,b)` to
+- `neqconstr` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
   represent linear inequality constraints. Feasible variables are such that
-  `A'⋅x ≤ b` holds elementwise.
+  `Aᵢ⋅x ≤ bᵢ` holds elementwise.
 
 ## References
 

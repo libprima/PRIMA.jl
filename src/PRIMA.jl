@@ -90,11 +90,11 @@ const _doc_nonlinear_constraints = """
 const _doc_linear_constraints = """
 - `eqconstr` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)`
   to represent linear equality constraints. Feasible variables are
-  such that `Aₑ'⋅x = bₑ` holds elementwise.
+  such that `Aₑ⋅x = bₑ` holds elementwise.
 
 - `neqconstr` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
   represent linear inequality constraints. Feasible variables are such that
-  `Aᵢ'⋅x ≤ bᵢ` holds elementwise.
+  `Aᵢ⋅x ≤ bᵢ` holds elementwise.
 """
 
 """
@@ -267,20 +267,20 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function bobyqa!(f, x::DenseVector{Cdouble};
-                 xl::DenseVector{Cdouble} = fill(typemin(Cdouble), length(x)),
-                 xu::DenseVector{Cdouble} = fill(typemax(Cdouble), length(x)),
+                 xl::Union{AbstractVector{<:Real},Nothing} = nothing,
+                 xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
                  rhoend::Real = rhobeg*1e-4,
                  iprint::Union{Integer,Message} = MSG_NONE,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1)
+    # Check arguments and get constraints.
     n = length(x) # number of variables
-    @assert length(xl) == n
-    @assert length(xu) == n
-    @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
-    @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-    @assert n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2
+    _check_rho(rhobeg, rhoend)
+    _check_npt(npt, n)
+    xl = _get_lower_bound(xl, n)
+    xu = _get_upper_bound(xu, n)
 
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
@@ -310,10 +310,10 @@ function newuoa!(f, x::DenseVector{Cdouble};
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1,
                  iprint::Union{Integer,Message} = MSG_NONE)
+    # Check arguments.
     n = length(x) # number of variables
-    @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
-    @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-    @assert n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2
+    _check_rho(rhobeg, rhoend)
+    _check_npt(npt, n)
 
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
@@ -342,9 +342,9 @@ function uobyqa!(f, x::DenseVector{Cdouble};
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
+    # Check arguments.
     n = length(x) # number of variables
-    @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
-    @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
+    _check_rho(rhobeg, rhoend)
 
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
@@ -359,7 +359,15 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     end
 end
 
-const LinearConstraint = Tuple{DenseMatrix{Cdouble},DenseVector{Cdouble}}
+"""
+    PRIME.LinearConstraints
+
+is the type of `(A,b)`, the 2-tuple representing linear equality constraints
+`A⋅x = b` or linear inequality constraints `A⋅x ≤ b` where `A` is a matrix, `x`
+is the vector of variables, and `b` is a vector.
+
+"""
+const LinearConstraints = Tuple{AbstractMatrix{<:Real},AbstractVector{<:Real}}
 
 """
     PRIMA.cobyla!(f, x; kwds...) -> (fx, nf, rc)
@@ -370,23 +378,22 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function cobyla!(f, x::DenseVector{Cdouble};
-                 nlconstr::Union{DenseVector{Cdouble},Nothing} = nothing,
-                 ineqconstr::Union{LinearConstraint,Nothing} = nothing,
-                 eqconstr::Union{LinearConstraint,Nothing} = nothing,
-                 xl::DenseVector{Cdouble} = fill(typemin(Cdouble), length(x)),
-                 xu::DenseVector{Cdouble} = fill(typemax(Cdouble), length(x)),
+                 nlconstr::Union{AbstractVector{<:Real},Nothing} = nothing,
+                 ineqconstr::Union{LinearConstraints,Nothing} = nothing,
+                 eqconstr::Union{LinearConstraints,Nothing} = nothing,
+                 xl::Union{AbstractVector{<:Real},Nothing} = nothing,
+                 xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
                  rhoend::Real = rhobeg*1e-4,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
+    # Check arguments and get constaints.
     n = length(x) # number of variables
-    @assert length(xl) == n
-    @assert length(xu) == n
-    @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
-    @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-
-    m_nlcon, nlcon_ptr = _get_nonlinear_constraints(nlconstr)
+    _check_rho(rhobeg, rhoend)
+    xl = _get_lower_bound(xl, n)
+    xu = _get_upper_bound(xu, n)
+    m_nlcon, nlcon = _get_nonlinear_constraints(nlconstr)
     m_eq, A_eq, b_eq = _get_linear_constraints(eqconstr, n)
     m_ineq, A_ineq, b_ineq = _get_linear_constraints(ineqconstr, n)
 
@@ -398,9 +405,9 @@ function cobyla!(f, x::DenseVector{Cdouble};
 
     try
         # Call low-level optimizer.
-        rc = GC.@preserve nlconstr ineqconstr eqconstr prima_cobyla(m_nlcon, fp,
-             n, x, fx, cstrv, nlcon_ptr, m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq,
-            xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        rc = prima_cobyla(m_nlcon, fp, n, x, fx, cstrv, nlcon,
+                          m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq,
+                          xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
         _pop_wrapper(fw)
@@ -416,23 +423,22 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function lincoa!(f, x::DenseVector{Cdouble};
-                 ineqconstr::Union{LinearConstraint,Nothing} = nothing,
-                 eqconstr::Union{LinearConstraint,Nothing} = nothing,
-                 xl::DenseVector{Cdouble} = fill(typemin(Cdouble), length(x)),
-                 xu::DenseVector{Cdouble} = fill(typemax(Cdouble), length(x)),
+                 ineqconstr::Union{LinearConstraints,Nothing} = nothing,
+                 eqconstr::Union{LinearConstraints,Nothing} = nothing,
+                 xl::Union{AbstractVector{<:Real},Nothing} = nothing,
+                 xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
                  rhoend::Real = rhobeg*1e-4,
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1,
                  iprint::Union{Integer,Message} = MSG_NONE)
+    # Check arguments and get constaints.
     n = length(x) # number of variables
-    @assert length(xl) == n
-    @assert length(xu) == n
-    @assert isfinite(rhobeg) && rhobeg > zero(rhobeg)
-    @assert isfinite(rhoend) && rhoend ≥ zero(rhoend) && rhoend ≤ rhobeg
-    @assert n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2
-
+    _check_rho(rhobeg, rhoend)
+    _check_npt(npt, n)
+    xl = _get_lower_bound(xl, n)
+    xu = _get_upper_bound(xu, n)
     m_eq, A_eq, b_eq = _get_linear_constraints(eqconstr, n)
     m_ineq, A_ineq, b_ineq = _get_linear_constraints(ineqconstr, n)
 
@@ -443,9 +449,9 @@ function lincoa!(f, x::DenseVector{Cdouble};
     fp = _push_wrapper(fw)    # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = GC.@preserve ineqconstr eqconstr prima_lincoa(fp, n, x, fx,
-             cstrv, m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq, xl, xu, nf,
-             rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        rc = prima_lincoa(fp, n, x, fx, cstrv,
+                          m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq, xl, xu,
+                          nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
         _pop_wrapper(fw)
@@ -515,8 +521,10 @@ end
 
 # Private functions `_push_wrapper` and `_pop_wrapper` are to be used in a
 # `try-finally` clause as explained above.
-_c_wrapper(::ObjFun) = @cfunction(_objfun_wrapper, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble},))
-_c_wrapper(::ObjFunCon) = @cfunction(_objfuncon_wrapper, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble},))
+_c_wrapper(::ObjFun) =
+    @cfunction(_objfun_wrapper, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble},))
+_c_wrapper(::ObjFunCon) =
+    @cfunction(_objfuncon_wrapper, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble},))
 function _push_wrapper(fw::AbstractObjFun)
     push!(_get_stack(fw), fw)
     return _c_wrapper(fw)
@@ -529,18 +537,84 @@ function _pop_wrapper(fw::AbstractObjFun)
     return nothing
 end
 
-# FIXME: Matrix A of linear constraints is in row-major order (this is imposed
-# by the C interface which transposes the matrix A).
-_get_linear_constraints(::Nothing, n::Integer) = 0, Ptr{Cdouble}(0), Ptr{Cdouble}(0)
-function _get_linear_constraints(Ab::LinearConstraint, n::Integer)
-    A, b = Ab
-    m = length(b) # number of constraints
-    @assert size(A) == (n, m)
-    return m, pointer(A), pointer(b)
+function _check_rho(rhobeg, rhoend)
+    isfinite(rhobeg) && rhobeg > zero(rhobeg) || throw(ArgumentError(
+        "`rhobeg` must be finite and positive"))
+    isfinite(rhoend) && rhoend ≥ zero(rhoend) || throw(ArgumentError(
+        "`rhoend` must be finite and non-negative"))
+    rhoend ≤ rhobeg|| throw(ArgumentError(
+        "`rhoend` must be less or equal `rhobeg`"))
+    nothing
 end
 
-_get_nonlinear_constraints(::Nothing, n::Integer) = 0, Ptr{Cdouble}(0)
-_get_nonlinear_constraints(c::DenseVector{Cdouble}) =
-    length(c), pointer(c)
+function _check_npt(npt::Integer, n::Integer)
+    n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2 || throw(ArgumentError(
+        "`n + 2 ≤ npt ≤ (n + 1)*(n + 2)/2` must hold"))
+    nothing
+end
+
+# Null-array to represent missing argument. It is sufficient to implement the abstract
+# array API plus the Base.unsafe_convert method.
+struct NullArray{T,N} <: AbstractArray{T,N} end
+const NullVector{T} = NullArray{T,1}
+const NullMatrix{T} = NullArray{T,2}
+Base.length(::NullArray{T,N}) where {T,N} = 0
+Base.size(::NullArray{T,N}) where {T,N} = ntuple(Returns(0), Val(N))
+Base.axes(::NullArray{T,N}) where {T,N} = ntuple(Returns(Base.OneTo(0)), Val(N))
+Base.unsafe_convert(::Type{Ptr{S}}, ::NullArray{T,N}) where {T,N,S<:Union{Cvoid,T}} = Ptr{S}(0)
+
+# FIXME: Matrix A of linear constraints is in row-major order (this is imposed
+# by the C interface which transposes the matrix A).
+_get_linear_constraints(::Nothing, n::Integer) =
+    0, NullMatrix{Cdouble}(), NullVector{Cdouble}()
+function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
+    A, b = Ab
+    Base.has_offset_axes(A) && error(
+        "matrix `A` of linear constraints must have 1-based indices")
+    Base.has_offset_axes(b) && error(
+        "vector `b` of linear constraints must have 1-based indices")
+    m = length(b) # number of constraints
+    size(A) == (m,n) || throw(DimensionMismatch(
+        "matrix `A` of linear constraints has incompatible dimensions"))
+    T = Cdouble
+    if true
+        # Transpose.
+        A_ = Matrix{T}(undef, n, m)
+        @inbounds for i ∈ 1:m
+            for j ∈ 1:n
+                A_[j,i] = A[i,j]
+            end
+        end
+    else
+        A_ = _dense_array(T, A)
+    end
+    b_ = _dense_array(T, b)
+    return m, A_, b_
+end
+
+_get_nonlinear_constraints(::Nothing, n::Integer) =
+    0, NullVector{Cdouble}()
+_get_nonlinear_constraints(c::AbstractVector{<:Real}) =
+    length(c), _dense_array(Cdouble, c)
+
+for (uplo, def) in ((:lower, typemin),
+                    (:upper, typemax))
+    func = Symbol("_get_$(uplo)_bound")
+    @eval begin
+        $func(::Nothing, n::Integer) = fill(def(Cdouble), n)
+        function $func(b::AbstractVector, n::Integer)
+            Base.has_offset_axes(b) && error(
+                $("$uplo bound must have 1-based indices"))
+            length(b) == n || throw(DimensionMismatch(string(
+                $("$uplo bound must have "), n, " elements")))
+            return _dense_array(Cdouble, b)
+        end
+    end
+end
+
+# Yields an array with given element type and which can be safely passed to a C
+# function (i.e. it has contiguous elements in memory).
+_dense_array(::Type{T}, A::DenseArray{T,N}) where {T,N} = A
+_dense_array(::Type{T}, A::AbstractArray{<:Any,N}) where {N,T} = convert(Array{T,N}, A)
 
 end

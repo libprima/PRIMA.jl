@@ -39,8 +39,9 @@ using Test, TypeUtils
     x0_sav = copy(x0) # for testing that x0 does not get overwritten
 
     # Inequality constraints: x₁ ≤ 4, x₂ ≤ 3, x₁ + x₂ ≤ 10
-    A_ineq = [1.0 0.0 1.0;
-              0.0 1.0 1.0]
+    A_ineq = [1.0 0.0;
+              0.0 1.0;
+              1.0 1.0]
     b_ineq = [4.0, 3.0, 10.0]
 
     # Bounds.
