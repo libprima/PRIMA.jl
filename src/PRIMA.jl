@@ -553,6 +553,13 @@ function _check_npt(npt::Integer, n::Integer)
     nothing
 end
 
+@static if !isdefined(Base, :Returns)
+    struct Returns{T}
+        value::T
+    end
+    (obj::Returns)(args...; kwds...) = obj.value
+end
+
 # Null-array to represent missing argument. It is sufficient to implement the abstract
 # array API plus the Base.unsafe_convert method.
 struct NullArray{T,N} <: AbstractArray{T,N} end
