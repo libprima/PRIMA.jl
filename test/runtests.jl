@@ -21,6 +21,15 @@ optimizer(algo::Symbol) =
         for status in instances(PRIMA.Status)
             @test PRIMA.reason(status) isa String
         end
+        # Check NULL-array API.
+        let NullArray = PRIMA.NullArray
+            A = NullArray{Int16,3}()
+            @test eltype(A) === Int16
+            @test size(A) == (0,0,0)
+            @test axes(A) == (1:0,1:0,1:0)
+            @test length(A) == 0
+            @test pointer(A) === Ptr{Int16}(0)
+        end
     end
 
     @testset "Simple objective function" begin
