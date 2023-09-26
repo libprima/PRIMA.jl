@@ -531,8 +531,8 @@ function _push_wrapper(fw::AbstractObjFun)
 end
 function _pop_wrapper(fw::AbstractObjFun)
     stack = _get_stack(fw)
-    last(stack) === fw || error
-    ("objective function is not the last one in the caller tread stask")
+    last(stack) === fw || error(
+        "objective function is not the last one in the caller thread stask")
     resize!(stack, length(stack) - 1)
     return nothing
 end
@@ -577,16 +577,17 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
     size(A) == (m,n) || throw(DimensionMismatch(
         "matrix `A` of linear constraints has incompatible dimensions"))
     T = Cdouble
-    if true
-        # Transpose.
-        A_ = Matrix{T}(undef, n, m)
-        @inbounds for i ∈ 1:m
-            for j ∈ 1:n
-                A_[j,i] = A[i,j]
-            end
+    # FIXME: Like in FORTRAN, Julia matrices are in column-major storage order,
+    # but we must transpose the matrix A in linear constraints because we call
+    # the FORTRAN code through a C interface which conisder that matrices are
+    # in row-major storage. As a result, the matrix `A` will be transposed
+    # twice. This isn't a big issue for a small number of variables and
+    # constraints, but it's not completely satisfactory either.
+    A_ = Matrix{T}(undef, n, m)
+    @inbounds for i ∈ 1:m
+        for j ∈ 1:n
+            A_[j,i] = A[i,j]
         end
-    else
-        A_ = _dense_array(T, A)
     end
     b_ = _dense_array(T, b)
     return m, A_, b_
