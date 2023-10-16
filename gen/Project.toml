@@ -5,3 +5,4 @@ PRIMA_jll = "eead6e0c-2d5b-5641-a95c-b722de96d551"
 
 [compat]
 julia = "1.6"
+PRIMA_jll = "0.7.1"
