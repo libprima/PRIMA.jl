@@ -57,7 +57,7 @@ optimizer(algo::Symbol) =
         end
 
         # Array to store non-linear constraints.
-        nonlinear_ineq = Array{Cdouble}(undef, 1)
+        c = Array{Cdouble}(undef, 1)
 
         # Initial solution.
         x0 = [0.0, 0.0]
@@ -130,8 +130,9 @@ optimizer(algo::Symbol) =
 
         @testset "COBYLA" begin
             println("\nCOBYLA:")
+            # First call with just the number of non-linear inequality constraints.
             x, fx, nf, rc, cstrv = @inferred PRIMA.cobyla(f, x0;
-                                                          nonlinear_ineq,
+                                                          nonlinear_ineq = length(c),
                                                           linear_ineq = (A_ineq, b_ineq),
                                                           xl, xu,
                                                           rhobeg = 1.0, rhoend = 1e-3,
@@ -139,7 +140,22 @@ optimizer(algo::Symbol) =
                                                           maxfun = 200*n,
                                                           iprint = PRIMA.MSG_EXIT)
             msg = PRIMA.reason(rc)
-            println("x = $x, f(x) = $fx, cstrv = $cstrv, nonlinear_ineq = $nonlinear_ineq, rc = $rc, msg = '$msg', evals = $nf")
+            println("x = $x, f(x) = $fx, cstrv = $cstrv, rc = $rc, msg = '$msg', evals = $nf")
+            @test x ≈ [3,2] atol=2e-2 rtol=0
+            @test f(x) ≈ fx
+            @test x0 == x0_sav
+            @test check_bounds(xl, x, xu)
+            # Second call with an array to store the non-linear inequality constraints.
+            x, fx, nf, rc, cstrv = @inferred PRIMA.cobyla(f, x0;
+                                                          nonlinear_ineq = c,
+                                                          linear_ineq = (A_ineq, b_ineq),
+                                                          xl, xu,
+                                                          rhobeg = 1.0, rhoend = 1e-3,
+                                                          ftarget = -Inf,
+                                                          maxfun = 200*n,
+                                                          iprint = PRIMA.MSG_EXIT)
+            msg = PRIMA.reason(rc)
+            println("x = $x, f(x) = $fx, cstrv = $cstrv, c(x) = $c, rc = $rc, msg = '$msg', evals = $nf")
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ fx
             @test x0 == x0_sav

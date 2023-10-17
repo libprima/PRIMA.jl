@@ -174,10 +174,11 @@ Assuming `n = length(x)` is the number of variables, then:
   elementwise lower and upper bounds for the variables. Feasible variables are
   such that `xl ≤ x ≤ xu` (elementwise).
 
-- `nonlinear_ineq` (default `nothing`) may be specified as a vector of `m`
-  double precision floating-point values which are passed to the user-defined
-  function to store `c(x)` and in order to impose the `m` non-linear inequality
-  constraints `c(x) ≤ 0` in `x`. This keyword only exists for `cobyla`.
+- `nonlinear_ineq` (default `0`) may be specified with the number `m` of
+   non-linear inequality constraints expressed `c(x) ≤ 0`. If the caller is
+   interested in the values of `c(x)` at the returned solution the keyword may
+   be set with a vector of `m` double precision floating-point values
+   to store `c(x)`. This keyword only exists for `cobyla`.
 
 - `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
   represent linear equality constraints. Feasible variables are such that `Aₑ⋅x

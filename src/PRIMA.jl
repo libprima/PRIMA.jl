@@ -81,10 +81,11 @@ const _doc_bound_constraints = """
 """
 
 const _doc_nonlinear_constraints = """
-- `nonlinear_ineq` (default `nothing`) may be specified as a vector of `m`
-  double precision floating-point values which are passed to the user-defined
-  function to store `c(x)` and in order to impose the `m` non-linear inequality
-  constraints `c(x) ≤ 0` in `x`.
+- `nonlinear_ineq` (default `nothing`) may be specified with the number `m` of
+   non-linear inequality constraints expressed `c(x) ≤ 0`. If the caller is
+   interested in the values of `c(x)` at the returned solution, the keyword may
+   be set with a vector of `m` double precision floating-point values to store
+   `c(x)`.
 """
 
 const _doc_linear_constraints = """
@@ -378,7 +379,7 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function cobyla!(f, x::DenseVector{Cdouble};
-                 nonlinear_ineq::Union{AbstractVector{<:Real},Nothing} = nothing,
+                 nonlinear_ineq::Union{AbstractVector{<:Real},Integer,Nothing} = nothing,
                  linear_ineq::Union{LinearConstraints,Nothing} = nothing,
                  linear_eq::Union{LinearConstraints,Nothing} = nothing,
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
@@ -602,6 +603,8 @@ end
 
 _get_nonlinear_constraints(::Nothing) =
     0, NullVector{Cdouble}()
+_get_nonlinear_constraints(m::Integer) =
+    _get_nonlinear_constraints(Vector{Cdouble}(undef, m))
 _get_nonlinear_constraints(c::AbstractVector{<:Real}) =
     length(c), _dense_array(Cdouble, c)
 
