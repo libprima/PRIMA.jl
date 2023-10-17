@@ -49,7 +49,7 @@ package:
   equality constraints, and linear inequality constraints.
 
 All these algorithms are trust region methods where the variables are updated
-according to an affine or quadratic local approximation interpolating the
+according to an affine or a quadratic local approximation interpolating the
 objective function at a given number of points (set by keyword `npt` by some of
 the algorithms). No derivatives of the objective function are needed. These
 algorithms are well suited to problems with a non-analytic objective function
@@ -130,19 +130,19 @@ end
 The keywords allowed by the different algorithms are summarized by the
 following table.
 
-| Keyword      | Description                            | Algorithms                   |
-|:-------------|:---------------------------------------|:-----------------------------|
-| `rhobeg`     | Initial trust region radius            | all                          |
-| `rhoend`     | Final trust region radius              | all                          |
-| `ftarget`    | Target objective function value        | all                          |
-| `maxfun`     | Maximum number of function evaluations | all                          |
-| `iprint`     | Verbosity level                        | all                          |
-| `npt`        | Number of points in local model        | `bobyqa`, `lincoa`, `newuoa` |
-| `xl`         | Lower bound                            | `bobyqa`, `cobyla`, `lincoa` |
-| `xu`         | Upper bound                            | `bobyqa`, `cobyla`, `lincoa` |
-| `nlconstr`   | Non-linear constraints                 | `cobyla`                     |
-| `eqconstr`   | Linear equality constraints            | `cobyla`, `lincoa`           |
-| `ineqconstr` | Linear inequality constraints          | `cobyla`, `lincoa`           |
+| Keyword          | Description                            | Algorithms                   |
+|:-----------------|:---------------------------------------|:-----------------------------|
+| `rhobeg`         | Initial trust region radius            | all                          |
+| `rhoend`         | Final trust region radius              | all                          |
+| `ftarget`        | Target objective function value        | all                          |
+| `maxfun`         | Maximum number of function evaluations | all                          |
+| `iprint`         | Verbosity level                        | all                          |
+| `npt`            | Number of points in local model        | `bobyqa`, `lincoa`, `newuoa` |
+| `xl`             | Lower bound                            | `bobyqa`, `cobyla`, `lincoa` |
+| `xu`             | Upper bound                            | `bobyqa`, `cobyla`, `lincoa` |
+| `nonlinear_ineq` | Non-linear inequality constraints      | `cobyla`                     |
+| `linear_eq`      | Linear equality constraints            | `cobyla`, `lincoa`           |
+| `linear_ineq`    | Linear inequality constraints          | `cobyla`, `lincoa`           |
 
 Assuming `n = length(x)` is the number of variables, then:
 
@@ -174,11 +174,11 @@ Assuming `n = length(x)` is the number of variables, then:
   elementwise lower and upper bounds for the variables. Feasible variables are
   such that `xl ≤ x ≤ xu` (elementwise).
 
-- `nonlinear_ineq` (default `0`) may be specified with the number `m` of
+- `nonlinear_ineq` (default `nothing`) may be specified with the number `m` of
    non-linear inequality constraints expressed `c(x) ≤ 0`. If the caller is
-   interested in the values of `c(x)` at the returned solution the keyword may
-   be set with a vector of `m` double precision floating-point values
-   to store `c(x)`. This keyword only exists for `cobyla`.
+   interested in the values of `c(x)` at the returned solution, the keyword may
+   be set with a vector of `m` double precision floating-point values to store
+   `c(x)`. This keyword only exists for `cobyla`.
 
 - `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
   represent linear equality constraints. Feasible variables are such that `Aₑ⋅x
