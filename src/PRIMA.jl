@@ -81,18 +81,18 @@ const _doc_bound_constraints = """
 """
 
 const _doc_nonlinear_constraints = """
-- `nlconstr` (default `nothing`) may be specified as a vector of `m` double
-  precision floating-point values which are passed to the user-defined function
-  to store `c(x)` the non-linear constraints in `x`. This keyword only exists
-  for `cobyla`.
+- `nonlinear_ineq` (default `nothing`) may be specified as a vector of `m`
+  double precision floating-point values which are passed to the user-defined
+  function to store `c(x)` and in order to impose the `m` non-linear inequality
+  constraints `c(x) ≤ 0` in `x`.
 """
 
 const _doc_linear_constraints = """
-- `eqconstr` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)`
+- `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)`
   to represent linear equality constraints. Feasible variables are
   such that `Aₑ⋅x = bₑ` holds elementwise.
 
-- `neqconstr` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
+- `linear_ineq` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
   represent linear inequality constraints. Feasible variables are such that
   `Aᵢ⋅x ≤ bᵢ` holds elementwise.
 """
@@ -206,7 +206,7 @@ The objective function takes two arguments, the variables `x` and a vector `cx`
 to store the non-linear constraints, and returns the function value, it shall
 implement the following signature:
 
-    f(x::Vector{Cdouble}, cx::vector{Cdouble})::Real
+    f(x::Vector{Cdouble}, cx::Vector{Cdouble})::Real
 
 where the e,tries of `cx` are to be overwritten by the non-linear consttaints
 `c(x)`.
@@ -378,9 +378,9 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function cobyla!(f, x::DenseVector{Cdouble};
-                 nlconstr::Union{AbstractVector{<:Real},Nothing} = nothing,
-                 ineqconstr::Union{LinearConstraints,Nothing} = nothing,
-                 eqconstr::Union{LinearConstraints,Nothing} = nothing,
+                 nonlinear_ineq::Union{AbstractVector{<:Real},Nothing} = nothing,
+                 linear_ineq::Union{LinearConstraints,Nothing} = nothing,
+                 linear_eq::Union{LinearConstraints,Nothing} = nothing,
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
@@ -393,9 +393,9 @@ function cobyla!(f, x::DenseVector{Cdouble};
     _check_rho(rhobeg, rhoend)
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
-    m_nlcon, nlcon = _get_nonlinear_constraints(nlconstr)
-    m_eq, A_eq, b_eq = _get_linear_constraints(eqconstr, n)
-    m_ineq, A_ineq, b_ineq = _get_linear_constraints(ineqconstr, n)
+    m_nlcon, nlcon = _get_nonlinear_constraints(nonlinear_ineq)
+    m_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
+    m_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
 
     cstrv = Ref{Cdouble}(NaN)     # to store constraint violation
     fx = Ref{Cdouble}(NaN)        # to store f(x) on return
@@ -423,8 +423,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function lincoa!(f, x::DenseVector{Cdouble};
-                 ineqconstr::Union{LinearConstraints,Nothing} = nothing,
-                 eqconstr::Union{LinearConstraints,Nothing} = nothing,
+                 linear_ineq::Union{LinearConstraints,Nothing} = nothing,
+                 linear_eq::Union{LinearConstraints,Nothing} = nothing,
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
                  rhobeg::Real = 1.0,
@@ -439,8 +439,8 @@ function lincoa!(f, x::DenseVector{Cdouble};
     _check_npt(npt, n)
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
-    m_eq, A_eq, b_eq = _get_linear_constraints(eqconstr, n)
-    m_ineq, A_ineq, b_ineq = _get_linear_constraints(ineqconstr, n)
+    m_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
+    m_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
 
     cstrv = Ref{Cdouble}(NaN) # to store constraint violation
     fx = Ref{Cdouble}(NaN)    # to store f(x) on return

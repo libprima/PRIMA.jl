@@ -43,12 +43,12 @@ optimizer(algo::Symbol) =
         # Objective function for COBYLA (same name but different signature to
         # implement non-linear constraint).
         function f(x::AbstractVector{T}, c::AbstractVector{T}) where {T<:AbstractFloat}
-            nlconstr!(x, c)
+            c!(x, c)
             return f(x)
         end
 
         # Non-linear constraint.
-        function nlconstr!(x::AbstractVector{T}, c::AbstractVector{T}) where {T<:AbstractFloat}
+        function c!(x::AbstractVector{T}, c::AbstractVector{T}) where {T<:AbstractFloat}
             @assert length(x) == 2
             @assert length(c) == 1
             x1, x2 = x
@@ -57,7 +57,7 @@ optimizer(algo::Symbol) =
         end
 
         # Array to store non-linear constraints.
-        nlconstr = Array{Cdouble}(undef, 1)
+        nonlinear_ineq = Array{Cdouble}(undef, 1)
 
         # Initial solution.
         x0 = [0.0, 0.0]
@@ -131,15 +131,15 @@ optimizer(algo::Symbol) =
         @testset "COBYLA" begin
             println("\nCOBYLA:")
             x, fx, nf, rc, cstrv = @inferred PRIMA.cobyla(f, x0;
-                                                          nlconstr,
-                                                          ineqconstr = (A_ineq, b_ineq),
+                                                          nonlinear_ineq,
+                                                          linear_ineq = (A_ineq, b_ineq),
                                                           xl, xu,
                                                           rhobeg = 1.0, rhoend = 1e-3,
                                                           ftarget = -Inf,
                                                           maxfun = 200*n,
                                                           iprint = PRIMA.MSG_EXIT)
             msg = PRIMA.reason(rc)
-            println("x = $x, f(x) = $fx, cstrv = $cstrv, nlconstr = $nlconstr, rc = $rc, msg = '$msg', evals = $nf")
+            println("x = $x, f(x) = $fx, cstrv = $cstrv, nonlinear_ineq = $nonlinear_ineq, rc = $rc, msg = '$msg', evals = $nf")
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ fx
             @test x0 == x0_sav
@@ -149,7 +149,7 @@ optimizer(algo::Symbol) =
         @testset "LINCOA" begin
             println("\nLINCOA:")
             x, fx, nf, rc, cstrv = @inferred PRIMA.lincoa(f, x0;
-                                                          ineqconstr = (A_ineq, b_ineq),
+                                                          linear_ineq = (A_ineq, b_ineq),
                                                           xl, xu,
                                                           rhobeg = 1.0, rhoend = 1e-3,
                                                           ftarget = -Inf,
@@ -279,14 +279,14 @@ optimizer(algo::Symbol) =
             if optim ∈ (:cobyla, :lincoa)
                 println("\nConstrained minimization of Rosenbrock function by $(optimizer_name(optim)):")
                 x0 = [-1, 2] # starting point
-                ineqconstr = (A_ineq, b_ineq)
+                linear_ineq = (A_ineq, b_ineq)
                 if optim === :cobyla
                     x, fx, nf, rc = @inferred cobyla(f, x0;
-                                                     ineqconstr,
+                                                     linear_ineq,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint)
                 elseif optim === :lincoa
                     x, fx, nf, rc = @inferred lincoa(f, x0;
-                                                     ineqconstr,
+                                                     linear_ineq,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint, npt)
                 else
                     continue
@@ -298,15 +298,15 @@ optimizer(algo::Symbol) =
 
                 println("\nIdem but with one linear inequality constraint replaced by a bound constraint:")
                 x0 = [1, 2] # starting point
-                ineqconstr = (A_ineq[1:2,:], b_ineq[1:2])
+                linear_ineq = (A_ineq[1:2,:], b_ineq[1:2])
                 xl = [-1,-Inf]
                 if optim === :cobyla
                     x, fx, nf, rc = @inferred cobyla(f, x0;
-                                                     xl, ineqconstr,
+                                                     xl, linear_ineq,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint)
                 elseif optim === :lincoa
                     x, fx, nf, rc = @inferred lincoa(f, x0;
-                                                     xl, ineqconstr,
+                                                     xl, linear_ineq,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint, npt)
                 else
                     continue
@@ -319,15 +319,15 @@ optimizer(algo::Symbol) =
                 # The solution is on the line: 4x + 3y = 12 (the boundary of the first constraint).
                 println("\nIdem but one linear constraint is active at the solution:")
                 x0 = [1, 2] # starting point
-                ineqconstr = (A_ineq, b_ineq)
+                linear_ineq = (A_ineq, b_ineq)
                 xl = [-1,-Inf]
                 if optim === :cobyla
                     x, fx, nf, rc = @inferred cobyla(f2, x0;
-                                                     ineqconstr,
+                                                     linear_ineq,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint)
                 elseif optim === :lincoa
                     x, fx, nf, rc = @inferred lincoa(f2, x0;
-                                                     ineqconstr,
+                                                     linear_ineq,
                                                      rhobeg, rhoend, ftarget, maxfun, iprint, npt)
                 else
                     continue

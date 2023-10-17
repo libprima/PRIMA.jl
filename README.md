@@ -12,7 +12,7 @@ derivatives.
 Formally, these algorithms are designed to solve problems of the form:
 
 ``` julia
-min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+min f(x)    subject to   x ∈ Ω ⊆ ℝⁿ
 ```
 
 where `f: Ω → ℝ` is the function to minimize, `Ω ⊆ ℝⁿ` is the set of feasible
@@ -174,16 +174,16 @@ Assuming `n = length(x)` is the number of variables, then:
   elementwise lower and upper bounds for the variables. Feasible variables are
   such that `xl ≤ x ≤ xu` (elementwise).
 
-- `nlconstr` (default `nothing`) may be specified as a vector of `m` double
-  precision floating-point values which are passed to the user-defined function
-  to store `c(x)` the non-linear constraints in `x`. This keyword only exists
-  for `cobyla`.
+- `nonlinear_ineq` (default `nothing`) may be specified as a vector of `m`
+  double precision floating-point values which are passed to the user-defined
+  function to store `c(x)` and in order to impose the `m` non-linear inequality
+  constraints `c(x) ≤ 0` in `x`. This keyword only exists for `cobyla`.
 
-- `eqconstr` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
-  represent linear equality constraints. Feasible variables are such that
-  `Aₑ⋅x = bₑ` holds elementwise.
+- `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
+  represent linear equality constraints. Feasible variables are such that `Aₑ⋅x
+  = bₑ` holds elementwise.
 
-- `neqconstr` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
+- `linear_ineq` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
   represent linear inequality constraints. Feasible variables are such that
   `Aᵢ⋅x ≤ bᵢ` holds elementwise.
 
