@@ -2170,6 +2170,7 @@ processcoverage
 ric
 rtol
 runtest
+runtests
 stask
 stp
 testset
