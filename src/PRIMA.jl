@@ -197,7 +197,7 @@ with
     Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
 
 by M.J.D. Powell's COBYLA (for \"Constrained Optimization BY Linear
-Approximations\") method. This algorithm is based on a trust region methood
+Approximations\") method. This algorithm is based on a trust region method
 where variables are updated according to a linear local approximation of the
 objective function. No derivatives of the objective function are needed.
 
@@ -209,7 +209,7 @@ implement the following signature:
 
     f(x::Vector{Cdouble}, cx::Vector{Cdouble})::Real
 
-where the e,tries of `cx` are to be overwritten by the non-linear consttaints
+where the e,tries of `cx` are to be overwritten by the non-linear constraints
 `c(x)`.
 
 Allowed keywords are (`n = length(x)` is the number of variables):
@@ -236,7 +236,7 @@ with
     Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, and Aᵢ⋅x ≤ bᵢ }
 
 by M.J.D. Powell's LINCOA (for \"LINearly Constrained Optimization\") method.
-This algorithm is based on a trust region methood where variables are updated
+This algorithm is based on a trust region method where variables are updated
 according to a quadratic local approximation of the objective function. No
 derivatives of the objective function are needed.
 
@@ -389,7 +389,7 @@ function cobyla!(f, x::DenseVector{Cdouble};
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
-    # Check arguments and get constaints.
+    # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
     xl = _get_lower_bound(xl, n)
@@ -434,7 +434,7 @@ function lincoa!(f, x::DenseVector{Cdouble};
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1,
                  iprint::Union{Integer,Message} = MSG_NONE)
-    # Check arguments and get constaints.
+    # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
     _check_npt(npt, n)
@@ -474,7 +474,7 @@ end
 # Small structure to wrap objective functions with constraints for COBYLA at
 # low level.
 struct ObjFunCon <: AbstractObjFun
-    f::Any  # user-defined onjective function
+    f::Any  # user-defined objective function
     nx::Int # number of variables
     nc::Int # number of non-linear constraints
 end
@@ -489,7 +489,7 @@ const _objfun_stack = Vector{Vector{ObjFun}}(undef, 0)
 const _objfuncon_stack = Vector{Vector{ObjFunCon}}(undef, 0)
 
 # Private function `_get_stack` yields the stack for the caller thread and for
-# a given type of objectve function.
+# a given type of objective function.
 _get_stack(fw::ObjFun) = _get_stack(_objfun_stack)
 _get_stack(fw::ObjFunCon) = _get_stack(_objfuncon_stack)
 function _get_stack(stack::Vector{Vector{T}}) where {T}
@@ -587,7 +587,7 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
     T = Cdouble
     # FIXME: Like in FORTRAN, Julia matrices are in column-major storage order,
     # but we must transpose the matrix A in linear constraints because we call
-    # the FORTRAN code through a C interface which conisder that matrices are
+    # the FORTRAN code through a C interface which consider that matrices are
     # in row-major storage. As a result, the matrix `A` will be transposed
     # twice. This isn't a big issue for a small number of variables and
     # constraints, but it's not completely satisfactory either.
