@@ -140,6 +140,7 @@ following table.
 | `npt`            | Number of points in local model        | `bobyqa`, `lincoa`, `newuoa` |
 | `xl`             | Lower bound                            | `bobyqa`, `cobyla`, `lincoa` |
 | `xu`             | Upper bound                            | `bobyqa`, `cobyla`, `lincoa` |
+| `nonlinear_eq`   | Non-linear equality constraints        | `cobyla`                     |
 | `nonlinear_ineq` | Non-linear inequality constraints      | `cobyla`                     |
 | `linear_eq`      | Linear equality constraints            | `cobyla`, `lincoa`           |
 | `linear_ineq`    | Linear inequality constraints          | `cobyla`, `lincoa`           |
@@ -174,11 +175,19 @@ Assuming `n = length(x)` is the number of variables, then:
   elementwise lower and upper bounds for the variables. Feasible variables are
   such that `xl ≤ x ≤ xu` (elementwise).
 
-- `nonlinear_ineq` (default `nothing`) may be specified with the number `m` of
-   non-linear inequality constraints expressed `c(x) ≤ 0`. If the caller is
-   interested in the values of `c(x)` at the returned solution, the keyword may
-   be set with a vector of `m` double precision floating-point values to store
-   `c(x)`. This keyword only exists for `cobyla`.
+- `nonlinear_eq` (default `nothing`) may be specified with a function, say
+  `c_eq`, implementing `n_eq` non-linear equality constraints defined by
+  `c_eq(x) = 0`. If the caller is interested in the values of `c_eq(x)` at the
+  returned solution, the keyword may be set with a 2-tuple `(v_eq, c_eq)` or
+  `(c_eq, v_eq)` with `v_eq` a vector of `n_eq` floating-point values to store
+  `c_eq(x)`.
+
+- `nonlinear_ineq` (default `nothing`) may be specified with a function, say
+  `c_ineq`, implementing `n_ineq` non-linear inequality constraints defined by
+  `c_ineq(x) ≤ 0`. If the caller is interested in the values of `c_ineq(x)` at
+  the returned solution, the keyword may be set with a 2-tuple `(v_ineq,
+  c_ineq)` or `(c_ineq, v_ineq)` with `v_ineq` a vector of `n_ineq`
+  floating-point values to store `c_ineq(x)`.
 
 - `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
   represent linear equality constraints. Feasible variables are such that `Aₑ⋅x

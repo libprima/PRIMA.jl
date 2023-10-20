@@ -1,5 +1,12 @@
 # User visible changes in `PRIMA.jl`
 
+## Version 0.1.2
+
+- Objective function and non-linear constraints for `cobyla`:
+  - Non-linear equality constraints can be specified by keyword `nonlinear_eq`.
+  - The objective function is called as `f(x)` as for other algorithms.
+  - The functions implementing the non-linear constraints are passed by
+    keywords `nonlinear_eq` and `nonlinear_ineq`.
 
 ## Version 0.1.1
 

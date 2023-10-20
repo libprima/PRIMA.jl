@@ -81,11 +81,20 @@ const _doc_bound_constraints = """
 """
 
 const _doc_nonlinear_constraints = """
-- `nonlinear_ineq` (default `nothing`) may be specified with the number `m` of
-   non-linear inequality constraints expressed `c(x) ≤ 0`. If the caller is
-   interested in the values of `c(x)` at the returned solution, the keyword may
-   be set with a vector of `m` double precision floating-point values to store
-   `c(x)`.
+- `nonlinear_eq` (default `nothing`) may be specified with a function, say
+  `c_eq`, implementing `n_eq` non-linear equality constraints defined by
+  `c_eq(x) = 0`. If the caller is interested in the values of `c_eq(x)` at the
+  returned solution, the keyword may be set with a 2-tuple `(v_eq, c_eq)` or
+  `(c_eq, v_eq)` with `v_eq` a vector of `n_eq` floating-point values to store
+  `c_eq(x)`.
+
+- `nonlinear_ineq` (default `nothing`) may be specified with a function, say
+  `c_ineq`, implementing `n_ineq` non-linear inequality constraints defined by
+  `c_ineq(x) ≤ 0`. If the caller is interested in the values of `c_ineq(x)` at
+  the returned solution, the keyword may be set with a 2-tuple `(v_ineq,
+  c_ineq)` or `(c_ineq, v_ineq)` with `v_ineq` a vector of `n_ineq`
+  floating-point values to store `c_ineq(x)`.
+
 """
 
 const _doc_linear_constraints = """
@@ -203,14 +212,10 @@ objective function. No derivatives of the objective function are needed.
 
 $(_doc_2_inputs_5_outputs)
 
-The objective function takes two arguments, the variables `x` and a vector `cx`
-to store the non-linear constraints, and returns the function value, it shall
-implement the following signature:
+The objective function takes a single argument, the variables `x`, and returns
+the function value, it shall implement the following signature:
 
-    f(x::Vector{Cdouble}, cx::Vector{Cdouble})::Real
-
-where the e,tries of `cx` are to be overwritten by the non-linear consttaints
-`c(x)`.
+    f(x::Vector{Cdouble})::Real
 
 Allowed keywords are (`n = length(x)` is the number of variables):
 
@@ -283,16 +288,20 @@ function bobyqa!(f, x::DenseVector{Cdouble};
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
 
+    # References for output values.
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
-    fw = ObjFun(f, n)      # wrapper to objective function
-    fp = _push_wrapper(fw) # pointer to C-callable function
+
+    # Create wrapper to objective function and push it on top of per-thread
+    # stack before calling optimizer.
+    fw = ObjFun(f, n)             # wrapper to objective function
+    fp = _push_objfun(bobyqa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
         rc = prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc)
     finally
-        _pop_wrapper(fw)
+        _pop_objfun(fw)
     end
 end
 
@@ -316,16 +325,20 @@ function newuoa!(f, x::DenseVector{Cdouble};
     _check_rho(rhobeg, rhoend)
     _check_npt(npt, n)
 
+    # References for output values.
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
-    fw = ObjFun(f, n)      # wrapper to objective function
-    fp = _push_wrapper(fw) # pointer to C-callable function
+
+    # Create wrapper to objective function and push it on top of per-thread
+    # stack before calling optimizer.
+    fw = ObjFun(f, n)             # wrapper to objective function
+    fp = _push_objfun(newuoa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
         rc = prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc)
     finally
-        _pop_wrapper(fw)
+        _pop_objfun(fw)
     end
 end
 
@@ -347,16 +360,20 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
 
+    # References for output values.
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
-    fw = ObjFun(f, n)      # wrapper to objective function
-    fp = _push_wrapper(fw) # pointer to C-callable function
+
+    # Create wrapper to objective function and push it on top of per-thread
+    # stack before calling optimizer.
+    fw = ObjFun(f, n)             # wrapper to objective function
+    fp = _push_objfun(uobyqa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
         rc = prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         return (fx[], Int(nf[]), rc)
     finally
-        _pop_wrapper(fw)
+        _pop_objfun(fw)
     end
 end
 
@@ -379,7 +396,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function cobyla!(f, x::DenseVector{Cdouble};
-                 nonlinear_ineq::Union{AbstractVector{<:Real},Integer,Nothing} = nothing,
+                 nonlinear_ineq = nothing,
+                 nonlinear_eq = nothing,
                  linear_ineq::Union{LinearConstraints,Nothing} = nothing,
                  linear_eq::Union{LinearConstraints,Nothing} = nothing,
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
@@ -389,29 +407,52 @@ function cobyla!(f, x::DenseVector{Cdouble};
                  ftarget::Real = -Inf,
                  maxfun::Integer = 100*length(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
-    # Check arguments and get constaints.
+    # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
-    m_nlcon, nlcon = _get_nonlinear_constraints(nonlinear_ineq)
-    m_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
-    m_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
+    n_nl_eq, v_nl_eq, c_nl_eq = _get_nonlinear_constraints(nonlinear_eq, x, "equality")
+    n_nl_ineq, v_nl_ineq, c_nl_ineq = _get_nonlinear_constraints(nonlinear_ineq, x, "inequality")
+    n_lin_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
+    n_lin_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
 
+    # Total number of non-linear inequalities and vector to store them.
+    n_nl = 2*n_nl_eq + n_nl_ineq
+    v_nl = Vector{Cdouble}(undef, n_nl)
+
+    # References for output values.
     cstrv = Ref{Cdouble}(NaN)     # to store constraint violation
     fx = Ref{Cdouble}(NaN)        # to store f(x) on return
     nf = Ref{Cint}(0)             # to store number of function calls
-    fw = ObjFunCon(f, n, m_nlcon) # wrapper to objective function
-    fp = _push_wrapper(fw)        # pointer to C-callable function
 
+    # Create wrapper to objective function and push it on top of per-thread
+    # stack before calling optimizer.
+    fw = ObjFun(f, n, c_nl_eq, n_nl_eq, c_nl_ineq, n_nl_ineq)
+    fp = _push_objfun(cobyla, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_cobyla(m_nlcon, fp, n, x, fx, cstrv, nlcon,
-                          m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq,
+        rc = prima_cobyla(n_nl, fp, n, x, fx, cstrv, v_nl,
+                          n_lin_ineq, A_ineq, b_ineq, n_lin_eq, A_eq, b_eq,
                           xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        # Unpack constraints.
+        if length(v_nl_eq) > 0
+            i = firstindex(v_nl)
+            for j in eachindex(v_nl_eq)
+                v_nl_eq[j] = v_nl[i]
+                i += 2
+            end
+        end
+        if length(v_nl_ineq) > 0
+            i = firstindex(v_nl) + 2*n_nl_eq
+            for j in eachindex(v_nl_ineq)
+                v_nl_ineq[j] = v_nl[i]
+                i += 1
+            end
+        end
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
-        _pop_wrapper(fw)
+        _pop_objfun(fw)
     end
 end
 
@@ -434,104 +475,223 @@ function lincoa!(f, x::DenseVector{Cdouble};
                  maxfun::Integer = 100*length(x),
                  npt::Integer = 2*length(x) + 1,
                  iprint::Union{Integer,Message} = MSG_NONE)
-    # Check arguments and get constaints.
+    # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
     _check_npt(npt, n)
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
-    m_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
-    m_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
+    n_lin_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
+    n_lin_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
 
+    # References for output values.
     cstrv = Ref{Cdouble}(NaN) # to store constraint violation
     fx = Ref{Cdouble}(NaN)    # to store f(x) on return
     nf = Ref{Cint}(0)         # to store number of function calls
-    fw = ObjFun(f, n)         # wrapper to objective function
-    fp = _push_wrapper(fw)    # pointer to C-callable function
+
+    # Create wrapper to objective function and push it on top of per-thread
+    # stack before calling optimizer.
+    fw = ObjFun(f, n)             # wrapper to objective function
+    fp = _push_objfun(lincoa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
         rc = prima_lincoa(fp, n, x, fx, cstrv,
-                          m_ineq, A_ineq, b_ineq, m_eq, A_eq, b_eq, xl, xu,
+                          n_lin_ineq, A_ineq, b_ineq, n_lin_eq, A_eq, b_eq, xl, xu,
                           nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
         return (fx[], Int(nf[]), rc, cstrv[])
     finally
-        _pop_wrapper(fw)
+        _pop_objfun(fw)
     end
 end
 
 #------------------------------------------------------------------------------
 # PRIVATE METHODS AND TYPES
 
-abstract type AbstractObjFun end
+"""
+    PRIMA.ObjFun(f, n)
 
-# Small structure to wrap simple objective functions for BOBYQA, NEWUOA,
-# UOBYQA, and LINCOA at low level.
-struct ObjFun <: AbstractObjFun
-    f::Any  # user-defined objective function
-    nx::Int # number of variables
+builds an object to wrap a multi-variate user-defined objective function
+`f: ℝⁿ → ℝ` with `n` the number of variables.
+
+    PRIMA.ObjFun(n, f, c_eq, n_eq, c_ineq, n_ineq)
+
+builds an object to wrap a multi-variate user-defined objective function `f: ℝⁿ
+→ ℝ` with `n` the number of variables and the `n_eq` and `n_ineq` non-linear
+equality and inequality constraints:
+
+    c_eq(x) = 0
+    c_ineq(x) ≤ 0
+
+Objective function object `objfun` has the following fields:
+
+    objfun.f        # callable implementing user-defined objective function
+    objfun.n        # number of variables
+    objfun.c_eq     # callable implementing non-linear equalities as `c_eq(x) = 0`
+    objfun.n_eq     # number of non-linear equalities
+    objfun.c_ineq   # callable implementing non-linear inequalities as `c_ineq(x) ≤ 0`
+    objfun.n_ineq   # number of non-linear inequalities
+
+See also [`PRIMA.call`](@ref) and [`PRIMA.call!`](@ref).
+
+"""
+struct ObjFun{F,E,I}
+    f::F        # callable implementing user-defined objective function
+    n::Int      # number of variables
+    c_eq::E     # callable implementing non-linear equalities as `c_eq(x) = 0`
+    n_eq::Int   # number of non-linear equalities
+    c_ineq::I   # callable implementing non-linear inequalities as `c_ineq(x) ≤ 0`
+    n_ineq::Int # number of non-linear inequalities
 end
 
-# Small structure to wrap objective functions with constraints for COBYLA at
-# low level.
-struct ObjFunCon <: AbstractObjFun
-    f::Any  # user-defined onjective function
-    nx::Int # number of variables
-    nc::Int # number of non-linear constraints
+unconstrained(x::AbstractVector{T}) where {T} = NullVector{T}()
+
+ObjFun(f::F, n::Integer) where {F} = ObjFun(f, n, unconstrained, 0, unconstrained, 0)
+
+"""
+    PRIMA.call(f::ObjFun, x::DenseVector{Cdouble}) -> fx
+
+yields value of objective function `f(x)` for variables `x`.
+
+The default method may be extended by specializing on the type of `f`. It is
+guaranteed that:
+
+    length(x)  = f.n
+
+holds.
+
+See also [`PRIMA.ObjFun`](@ref) and [`PRIMA.call!`](@ref).
+
+"""
+function call(f::ObjFun, x::DenseVector{Cdouble})
+    length(x) == f.n || throw(DimensionMismatch(
+        "invalid number of variables"))
+    return f.f(x)
+end
+
+"""
+    PRIMA.call!(f::ObjFun, x::DenseVector{Cdouble}, cx::DenseVector{Cdouble}) -> fx
+
+yields value of objective function `f(x)` for variables `x` and overwrites `cx`
+with the values `c(x)` coresponding to the non-linear inequality constraints
+`c(x) ≤ 0`.
+
+The default method may be extended by specializing on the type of `f`. It is
+guaranteed that:
+
+    length(x)  = f.n
+    length(cx) = 2*f.n_eq + f.n_ineq
+
+both hold. The second equality is because non-linear equality constraints are
+equivalent to two non-linear equality constraints: `c_eq(x) = 0` is rewritten
+as `c_eq(x) ≤ 0` and `-c_eq(x) ≤ 0`.
+
+See also [`PRIMA.ObjFun`](@ref) and [`PRIMA.call`](@ref).
+
+"""
+function call!(f::ObjFun, x::DenseVector{Cdouble}, cx::DenseVector{Cdouble})
+    length(x) == f.n || throw(DimensionMismatch(
+        "invalid number of variables"))
+    i = firstindex(cx) - 1
+    if f.n_eq != 0
+        c_eq = f.c_eq(x)::Union{Real,AbstractVector{<:Real}}
+        length(c_eq) == f.n_eq || throw(DimensionMismatch(
+            "invalid number of equalities"))
+        for j in eachindex(c_eq)
+            cx[i += 1] =  c_eq[j]
+            cx[i += 1] = -c_eq[j]
+        end
+    end
+    if f.n_ineq != 0
+        c_ineq = f.c_ineq(x)::Union{Real,AbstractVector{<:Real}}
+        length(c_ineq) == f.n_ineq || throw(DimensionMismatch(
+            "invalid number of inequalities"))
+        for j in eachindex(c_ineq)
+            cx[i += 1] = c_ineq[j]
+        end
+    end
+    return f.f(x)
+end
+
+# Computation of objective function and non-linear constraints, if any, is done
+# in several stages:
+#
+# 1. `_objfun` retrieves the objective function;
+#
+# 2. `unsafe_call` wraps pointers to the variables and the constraints, if any,
+#    into Julia arrays;
+#
+# 3. `call` or `call!` execute the user-defined functions implementing the
+#    objective function and the non-linear constraints.
+#
+# The motivations are (i) to dispatch as soon as possible on code depending on
+# the type of the user-defined Julia functions and (ii) to make possible to
+# extend `call` or `call!` at the last stage .
+
+# C-callable objective function for problems with no non-linear constraints
+# (for other algorithms than COBYLA).
+function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
+                 f_ptr::Ptr{Cdouble}) # (output) function value
+    # Retrieve objective function object and dispatch on its type to compute
+    # f(x).
+    f = last(_objfun_stack[Threads.threadid()])
+    unsafe_store!(f_ptr, unsafe_call(f, x_ptr))
+    return nothing
+end
+
+# C-callable objective function for for problems with non-linear constraints
+# (for COBYLA algorithm).
+function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
+                 f_ptr::Ptr{Cdouble}, # (output) function value
+                 c_ptr::Ptr{Cdouble}) # (output) constraints
+    # Retrieve objective function object and dispatch on its type to compute
+    # f(x) and the non-linear constraints.
+    f = last(_objfun_stack[Threads.threadid()])
+    unsafe_store!(f_ptr, unsafe_call(f, x_ptr, c_ptr))
+    return nothing
+end
+
+function unsafe_call(f::ObjFun, x_ptr::Ptr{Cdouble})
+    x = unsafe_wrap(Array, x_ptr, f.n)
+    return as(Cdouble, call(f, x))
+end
+
+function unsafe_call(f::ObjFun, x_ptr::Ptr{Cdouble}, c_ptr::Ptr{Cdouble})
+    x = unsafe_wrap(Array, x_ptr, f.n)
+    c = unsafe_wrap(Array, c_ptr, 2*f.n_eq + f.n_ineq)
+    return as(Cdouble, call!(f, x, c))
 end
 
 # Global variable storing the per-thread stacks of objective functions indexed
 # by thread identifier and then by execution order. On start of an
 # optimization, an object linked to the user-defined objective function is
 # pushed. This object is popped out of the stack on return of the optimization
-# call, whatever happens. It is therefore to wrap th call to the optimization
-# method in a `try-finally` clause.
+# call, whatever happens. It is therefore necessary to wrap the call to the
+# optimization method in a `try-finally` clause.
 const _objfun_stack = Vector{Vector{ObjFun}}(undef, 0)
-const _objfuncon_stack = Vector{Vector{ObjFunCon}}(undef, 0)
 
-# Private function `_get_stack` yields the stack for the caller thread and for
-# a given type of objectve function.
-_get_stack(fw::ObjFun) = _get_stack(_objfun_stack)
-_get_stack(fw::ObjFunCon) = _get_stack(_objfuncon_stack)
-function _get_stack(stack::Vector{Vector{T}}) where {T}
+# Private function `_get_objfun_stack` yields the stack of objective functions
+# for the caller thread.
+function _get_objfun_stack()
     i = Threads.threadid()
-    while length(stack) < i
-        push!(stack, Vector{T}(undef, 0))
+    while length(_objfun_stack) < i
+        push!(_objfun_stack, Vector{ObjFun}(undef, 0))
     end
-    return stack[i]
+    return _objfun_stack[i]
 end
 
-# The following wrappers are intended to be C-callable functions. Their
-# respective signatures must follow the prototypes `prima_obj` and
-# `prima_objcon` in `prima.h` header.
-function _objfun_wrapper(x_ptr::Ptr{Cdouble},  # (input) variables
-                         f_ptr::Ptr{Cdouble})  # (output) function value
-    fw = last(_objfun_stack[Threads.threadid()]) # retrieve the objective function
-    x = unsafe_wrap(Array, x_ptr, fw.nx)
-    unsafe_store!(f_ptr, as(Cdouble, fw.f(x)))
-    return nothing
-end
-function _objfuncon_wrapper(x_ptr::Ptr{Cdouble},  # (input) variables
-                            f_ptr::Ptr{Cdouble},  # (output) function value
-                            c_ptr::Ptr{Cdouble})  # (output) constraints
-    fw = last(_objfuncon_stack[Threads.threadid()]) # retrieve the objective function
-    x = unsafe_wrap(Array, x_ptr, fw.nx)
-    c = unsafe_wrap(Array, c_ptr, fw.nc)
-    unsafe_store!(f_ptr, as(Cdouble, fw.f(x, c)))
-    return nothing
-end
-
-# Private functions `_push_wrapper` and `_pop_wrapper` are to be used in a
+# Private functions `_push_objfun` and `_pop_objfun` are to be used in a
 # `try-finally` clause as explained above.
-_c_wrapper(::ObjFun) =
-    @cfunction(_objfun_wrapper, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble},))
-_c_wrapper(::ObjFunCon) =
-    @cfunction(_objfuncon_wrapper, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble},))
-function _push_wrapper(fw::AbstractObjFun)
-    push!(_get_stack(fw), fw)
-    return _c_wrapper(fw)
+function _push_objfun(algorithm, fw::ObjFun)
+    _objfun_ptr(::Any) =
+        @cfunction(_objfun, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}))
+    _objfun_ptr(::typeof(cobyla)) =
+        @cfunction(_objfun, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}))
+    push!(_get_objfun_stack(), fw)
+    return _objfun_ptr(algorithm)
 end
-function _pop_wrapper(fw::AbstractObjFun)
-    stack = _get_stack(fw)
+
+function _pop_objfun(fw::ObjFun)
+    stack = _get_objfun_stack()
     last(stack) === fw || error(
         "objective function is not the last one in the caller thread stask")
     resize!(stack, length(stack) - 1)
@@ -601,12 +761,27 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
     return m, A_, b_
 end
 
-_get_nonlinear_constraints(::Nothing) =
-    0, NullVector{Cdouble}()
-_get_nonlinear_constraints(m::Integer) =
-    _get_nonlinear_constraints(Vector{Cdouble}(undef, m))
-_get_nonlinear_constraints(c::AbstractVector{<:Real}) =
-    length(c), _dense_array(Cdouble, c)
+# Yield (n,v,c) with n the number of constraints, v a vector to store the
+# constraints on output (possibly a NullVector if the user is not interested in
+# that), and c the callable object implementing the constraints.
+_get_nonlinear_constraints(::Nothing, x::AbstractArray, str::AbstractString) =
+    0, NullVector{Cdouble}(), nothing
+_get_nonlinear_constraints(c::Tuple{Integer,Any}, x::AbstractArray, str::AbstractString) =
+    as(Int, c[1]), NullVector{Cdouble}(), c[2]
+_get_nonlinear_constraints(c::Tuple{AbstractVector,Any}, x::AbstractArray, str::AbstractString) =
+    length(c[1]), c[1], c[2]
+_get_nonlinear_constraints(c::Tuple{Any,Union{Integer,AbstractVector}}, x::AbstractArray, str::AbstractString) =
+    _get_nonlinear_constraints(reverse(c), x, str)
+function _get_nonlinear_constraints(c::Any, x::AbstractArray, str::AbstractString)
+    # Assume c is callable.
+    try
+        v = c(x)
+        return length(v), NullVector{Cdouble}(), c
+    catch ex
+        ex isa MethodError || throw(ex)
+        throw(ArgumentError("method `c(x)` not implemented for non-linear $str constraints"))
+    end
+end
 
 for (uplo, def) in ((:lower, typemin),
                     (:upper, typemax))

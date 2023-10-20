@@ -40,20 +40,11 @@ optimizer(algo::Symbol) =
             return as(T, 5*(x1 - 3)*(x1 - 3) + 7*(x2 - 2)*(x2 - 2) + as(T, 1//10)*(x1 + x2) - 10)
         end
 
-        # Objective function for COBYLA (same name but different signature to
-        # implement non-linear constraint).
-        function f(x::AbstractVector{T}, c::AbstractVector{T}) where {T<:AbstractFloat}
-            c!(x, c)
-            return f(x)
-        end
-
-        # Non-linear constraint.
-        function c!(x::AbstractVector{T}, c::AbstractVector{T}) where {T<:AbstractFloat}
+        # Non-linear inequality constraints.
+        function c_ineq(x::AbstractVector{T}) where {T<:AbstractFloat}
             @assert length(x) == 2
-            @assert length(c) == 1
             x1, x2 = x
-            c[firstindex(c)] = x1*x1 + x2*x2 - 13 # ‖x‖² ≤ 13
-            return nothing
+            return x1*x1 + x2*x2 - 13 # ‖x‖² ≤ 13
         end
 
         # Array to store non-linear constraints.
@@ -132,7 +123,7 @@ optimizer(algo::Symbol) =
             println("\nCOBYLA:")
             # First call with just the number of non-linear inequality constraints.
             x, fx, nf, rc, cstrv = @inferred PRIMA.cobyla(f, x0;
-                                                          nonlinear_ineq = length(c),
+                                                          nonlinear_ineq = c_ineq,
                                                           linear_ineq = (A_ineq, b_ineq),
                                                           xl, xu,
                                                           rhobeg = 1.0, rhoend = 1e-3,
@@ -147,7 +138,7 @@ optimizer(algo::Symbol) =
             @test check_bounds(xl, x, xu)
             # Second call with an array to store the non-linear inequality constraints.
             x, fx, nf, rc, cstrv = @inferred PRIMA.cobyla(f, x0;
-                                                          nonlinear_ineq = c,
+                                                          nonlinear_ineq = (c, c_ineq),
                                                           linear_ineq = (A_ineq, b_ineq),
                                                           xl, xu,
                                                           rhobeg = 1.0, rhoend = 1e-3,
