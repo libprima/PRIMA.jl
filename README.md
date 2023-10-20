@@ -190,12 +190,10 @@ Assuming `n = length(x)` is the number of variables, then:
   floating-point values to store `c_ineq(x)`.
 
 - `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
-  represent linear equality constraints. Feasible variables are such that `Aₑ⋅x
-  = bₑ` holds elementwise.
+  impose the linear equality constraints `Aₑ⋅x = bₑ`.
 
 - `linear_ineq` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
-  represent linear inequality constraints. Feasible variables are such that
-  `Aᵢ⋅x ≤ bᵢ` holds elementwise.
+  impose the linear inequality constraints `Aᵢ⋅x ≤ bᵢ`.
 
 
 ## References

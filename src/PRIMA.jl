@@ -112,7 +112,7 @@ const _doc_linear_constraints = """
 
 approximately solves the unconstrained optimization problem:
 
-    min f(x)    s.t.   x ∈ ℝⁿ
+    min f(x)    subject to   x ∈ ℝⁿ
 
 by M.J.D. Powell's UOBYQA (for \"Unconstrained Optimization BY Quadratic
 Approximations\") method. This algorithm is based on a trust region method
@@ -138,7 +138,7 @@ $(_doc_common_keywords)
 
 approximately solves the unconstrained optimization problem:
 
-    min f(x)    s.t.   x ∈ ℝⁿ
+    min f(x)    subject to   x ∈ ℝⁿ
 
 by M.J.D. Powell's NEWUOA method. This algorithm is based on a trust region
 method where variables are updated according to a quadratic local approximation
@@ -165,7 +165,7 @@ $(_doc_npt)
 
 approximately solves the bound constrained optimization problem:
 
-    min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+    min f(x)    subject to   x ∈ Ω ⊆ ℝⁿ
 
 with
 
@@ -199,7 +199,7 @@ $(_doc_bound_constraints)
 
 approximately solves the constrained optimization problem:
 
-    min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+    min f(x)    subject to   x ∈ Ω ⊆ ℝⁿ
 
 with
 
@@ -234,7 +234,7 @@ $(_doc_nonlinear_constraints)
 
 approximately solves the constrained optimization problem:
 
-    min f(x)    s.t.   x ∈ Ω ⊆ ℝⁿ
+    min f(x)    subject to   x ∈ Ω ⊆ ℝⁿ
 
 with
 
