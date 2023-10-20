@@ -4,20 +4,65 @@ using PRIMA_jll
 const libprimac = PRIMA_jll.libprimac
 include("wrappers.jl")
 
-export bobyqa, cobyla, lincoa, newuoa, uobyqa
+export bobyqa, cobyla, lincoa, newuoa, uobyqa, issuccess
 
 using TypeUtils
+using LinearAlgebra
 
 #------------------------------------------------------------------------------
 # PUBLIC INTERFACE
 
 """
-    PRIMA.reason(rc) -> str
+    PRIMA.Info
 
-yields a textual message explaining `rc`, the code returned by one of the PRIMA
-optimizers.
+is the type of the structured object used to collect various information
+provided by the optimization algorithms of the `PRIMA` package.
+
+An object, say `info`, of this type has the following properties:
+
+    info.fx       # value of the objective function f(x) on return
+    info.nf       # number of calls to the objective function
+    info.status   # final status code
+    info.cstrv    # amount of constraints violation, 0.0 if unconstrained
+    info.nl_eq    # non-linear equality constraints, empty vector if none
+    info.nl_ineq  # non-linear inequality constraints, empty vector if none
+
+Call `issuccess(info)` or `issuccess(info.status)` to check whether algorithm
+was sucessful. Call `PRIMA.reason(info)` or `PRIMA.reason(info.status)` to
+retrieve a textual description of the algorithm termination.
 
 """
+struct Info
+    fx::Cdouble              # f(x) on return
+    nf::Int                  # number of function calls
+    status::Status           # returned status code
+    cstrv::Cdouble           # amount of constraints violation
+    nl_eq::Vector{Cdouble}   # non-linear equality constraints
+    nl_ineq::Vector{Cdouble} # non-linear inequality constraints
+    function Info(; # Mandatory keywords.
+                  fx::Real,
+                  nf::Integer,
+                  status::Status,
+                  # Optional keywords.
+                  cstrv::Real = 0.0,
+                  nl_eq::AbstractVector{<:Real} = Cdouble[],
+                  nl_ineq::AbstractVector{<:Real} = Cdouble[])
+        return new(fx, nf, status, cstrv, nl_eq, nl_ineq)
+    end
+end
+
+LinearAlgebra.issuccess(info::Info) = issuccess(info.status)
+LinearAlgebra.issuccess(status::Status) =
+
+"""
+    PRIMA.reason(info::PRIMA.Info) -> str
+    PRIMA.reason(status::PRIMA.Status) -> str
+
+yield a textual message explaining `info.statu` or `status`, the status code
+returned by one of the PRIMA optimizers.
+
+"""
+reason(info::Info) = reason(info.status)
 reason(status::Union{Integer,Status}) = unsafe_string(prima_get_rc_string(status))
 
 # The high level wrappers. First the methods, then their documentation.
@@ -26,28 +71,25 @@ for func in (:bobyqa, :newuoa, :uobyqa, :lincoa, :cobyla)
     @eval begin
         function $func(f, x0::AbstractVector{<:Real}; kwds...)
             x = copyto!(Vector{Cdouble}(undef, length(x0)), x0)
-            return x, $func!(f, x; kwds...)...
+            return x, $func!(f, x; kwds...)
         end
     end
 end
 
-const _doc_2_inputs_4_outputs = """
+const _doc_common = """
 The arguments are the objective function `f` and the initial variables `x0`
-which are left unchanged on output. The returned value is the 4-tuple `(x, fx,
-nf, rc)` with `x` the (approximate) solution, `fx` the value of `f(x)`, `nf`
-the number of calls to `f`, and `rc` a status code (see [`PRIMA.Status`](@ref)
-and [`PRIMA.reason`](@ref)).
-"""
+which are left unchanged on output. The objective function is called as `f(x)`
+with `x` the variables, it must implement the following signature:
 
-const _doc_2_inputs_5_outputs = """
-The arguments are the objective function `f` and the initial variables `x0`
-which are left unchanged on output. The returned value is the 5-tuple `(x, fx,
-nf, rc, cstrv)` with `x` the (approximate) solution, `fx` the value of `f(x)`,
-`nf` the number of calls to `f`, `rc` a status code (see [`PRIMA.Status`](@ref)
-and [`PRIMA.reason`](@ref)), and `cstrv` is the amount of constraint violation.
-"""
+    f(x::Vector{Cdouble})::Real
 
-const _doc_common_keywords = """
+The result of the algorithm is a 2-tuple `(x, info)` with `x` the variables and
+`info` a structured object collecting other information provided by the
+algorithm (see [`PRIMA.Info`](@ref)). If `issuccess(info)` is true, then the
+algorithm was successful and `x` is an approximate solution of the problem.
+
+Allowed keywords are (`n = length(x)` is the number of variables):
+
 - `rhobeg` (default value `1.0`) is the initial radius of the trust region.
 
 - `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
@@ -82,29 +124,22 @@ const _doc_bound_constraints = """
 
 const _doc_nonlinear_constraints = """
 - `nonlinear_eq` (default `nothing`) may be specified with a function, say
-  `c_eq`, implementing `n_eq` non-linear equality constraints defined by
-  `c_eq(x) = 0`. If the caller is interested in the values of `c_eq(x)` at the
-  returned solution, the keyword may be set with a 2-tuple `(v_eq, c_eq)` or
-  `(c_eq, v_eq)` with `v_eq` a vector of `n_eq` floating-point values to store
-  `c_eq(x)`.
+  `c_eq`, implementing non-linear equality constraints defined by `c_eq(x) =
+  0`. On return, the values of the non-linear equality constraints are given by
+  `info.nl_eq` to save calling `c_eq(x)`.
 
 - `nonlinear_ineq` (default `nothing`) may be specified with a function, say
-  `c_ineq`, implementing `n_ineq` non-linear inequality constraints defined by
-  `c_ineq(x) ≤ 0`. If the caller is interested in the values of `c_ineq(x)` at
-  the returned solution, the keyword may be set with a 2-tuple `(v_ineq,
-  c_ineq)` or `(c_ineq, v_ineq)` with `v_ineq` a vector of `n_ineq`
-  floating-point values to store `c_ineq(x)`.
-
+  `c_ineq`, implementing non-linear inequality constraints defined by
+  `c_ineq(x) ≤ 0`. On return, the values of the non-linear inequality
+  constraints are given by `info.nl_ineq` to save calling `c_ineq(x)`.
 """
 
 const _doc_linear_constraints = """
-- `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)`
-  to represent linear equality constraints. Feasible variables are
-  such that `Aₑ⋅x = bₑ` holds elementwise.
+- `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
+  impose the linear equality constraints `Aₑ⋅x = bₑ`.
 
 - `linear_ineq` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
-  represent linear inequality constraints. Feasible variables are such that
-  `Aᵢ⋅x ≤ bᵢ` holds elementwise.
+  impose the linear inequality constraints `Aᵢ⋅x ≤ bᵢ`.
 """
 
 """
@@ -120,21 +155,12 @@ where variables are updated according to a quadratic local approximation
 interpolating the objective function. No derivatives of the objective function
 are needed.
 
-$(_doc_2_inputs_4_outputs)
-
-The objective function takes a single argument, the variables `x`, and returns
-the function value, it shall implement the following signature:
-
-    f(x::Vector{Cdouble})::Real
-
-Allowed keywords are (`n = length(x)` is the number of variables):
-
-$(_doc_common_keywords)
+$(_doc_common)
 
 """ uobyqa
 
 """
-    newuoa(f, x0; kwds...) -> (x, fx, nf, rc)
+    newuoa(f, x0; kwds...) -> x, info
 
 approximately solves the unconstrained optimization problem:
 
@@ -145,23 +171,14 @@ method where variables are updated according to a quadratic local approximation
 interpolating the objective function at a number of `npt` points. No
 derivatives of the objective function are needed.
 
-$(_doc_2_inputs_4_outputs)
-
-The objective function takes a single argument, the variables `x`, and returns
-the function value, it shall implement the following signature:
-
-    f(x::Vector{Cdouble})::Real
-
-Allowed keywords are (`n = length(x)` is the number of variables):
-
-$(_doc_common_keywords)
+$(_doc_common)
 
 $(_doc_npt)
 
 """ newuoa
 
 """
-    bobyqa(f, x0; kwds...) -> (x, fx, nf, rc)
+    bobyqa(f, x0; kwds...) -> x, info
 
 approximately solves the bound constrained optimization problem:
 
@@ -177,16 +194,7 @@ where variables are updated according to a quadratic local approximation
 interpolating the objective function at a number of `npt` points. No
 derivatives of the objective function are needed.
 
-$(_doc_2_inputs_4_outputs)
-
-The objective function takes a single argument, the variables `x`, and returns
-the function value, it shall implement the following signature:
-
-    f(x::Vector{Cdouble})::Real
-
-Allowed keywords are (`n = length(x)` is the number of variables):
-
-$(_doc_common_keywords)
+$(_doc_common)
 
 $(_doc_npt)
 
@@ -210,16 +218,9 @@ Approximations\") method. This algorithm is based on a trust region methood
 where variables are updated according to a linear local approximation of the
 objective function. No derivatives of the objective function are needed.
 
-$(_doc_2_inputs_5_outputs)
+$(_doc_common)
 
-The objective function takes a single argument, the variables `x`, and returns
-the function value, it shall implement the following signature:
-
-    f(x::Vector{Cdouble})::Real
-
-Allowed keywords are (`n = length(x)` is the number of variables):
-
-$(_doc_common_keywords)
+$(_doc_npt)
 
 $(_doc_bound_constraints)
 
@@ -245,16 +246,7 @@ This algorithm is based on a trust region methood where variables are updated
 according to a quadratic local approximation of the objective function. No
 derivatives of the objective function are needed.
 
-$(_doc_2_inputs_5_outputs)
-
-The objective function takes a single argument, the variables `x`, and returns
-the function value, it shall implement the following signature:
-
-    f(x::Vector{Cdouble})::Real
-
-Allowed keywords are (`n = length(x)` is the number of variables):
-
-$(_doc_common_keywords)
+$(_doc_common)
 
 $(_doc_npt)
 
@@ -265,7 +257,7 @@ $(_doc_linear_constraints)
 """ lincoa
 
 """
-    PRIMA.bobyqa!(f, x; kwds...) -> (fx, nf, rc)
+    PRIMA.bobyqa!(f, x; kwds...) -> info::PRIMA.Info
 
 in-place version of [`PRIMA.bobyqa`](@ref) which to see for details. On entry,
 argument `x` is a dense vector of double precision value with the initial
@@ -298,15 +290,15 @@ function bobyqa!(f, x::DenseVector{Cdouble};
     fp = _push_objfun(bobyqa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-        return (fx[], Int(nf[]), rc)
+        status = prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        return Info(; fx = fx[], nf = nf[], status)
     finally
         _pop_objfun(fw)
     end
 end
 
 """
-    PRIMA.newuoa!(f, x; kwds...) -> (fx, nf, rc)
+    PRIMA.newuoa!(f, x; kwds...) -> info::PRIMA.Info
 
 in-place version of [`PRIMA.newuoa`](@ref) which to see for details. On entry,
 argument `x` is a dense vector of double precision value with the initial
@@ -335,15 +327,15 @@ function newuoa!(f, x::DenseVector{Cdouble};
     fp = _push_objfun(newuoa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-        return (fx[], Int(nf[]), rc)
+        status = prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        return Info(; fx = fx[], nf = nf[], status)
     finally
         _pop_objfun(fw)
     end
 end
 
 """
-    PRIMA.uobyqa!(f, x; kwds...) -> (fx, nf, rc)
+    PRIMA.uobyqa!(f, x; kwds...) -> info::PRIMA.Info
 
 in-place version of [`PRIMA.uobyqa`](@ref) which to see for details. On entry,
 argument `x` is a dense vector of double precision value with the initial
@@ -370,15 +362,15 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     fp = _push_objfun(uobyqa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
-        return (fx[], Int(nf[]), rc)
+        status = prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        return Info(; fx = fx[], nf = nf[], status)
     finally
         _pop_objfun(fw)
     end
 end
 
 """
-    PRIME.LinearConstraints
+    PRIMA.LinearConstraints
 
 is the type of `(A,b)`, the 2-tuple representing linear equality constraints
 `A⋅x = b` or linear inequality constraints `A⋅x ≤ b` where `A` is a matrix, `x`
@@ -388,7 +380,7 @@ is the vector of variables, and `b` is a vector.
 const LinearConstraints = Tuple{AbstractMatrix{<:Real},AbstractVector{<:Real}}
 
 """
-    PRIMA.cobyla!(f, x; kwds...) -> (fx, nf, rc)
+    PRIMA.cobyla!(f, x; kwds...) -> info::PRIMA.Info
 
 in-place version of [`PRIMA.cobyla`](@ref) which to see for details. On entry,
 argument `x` is a dense vector of double precision value with the initial
@@ -412,14 +404,14 @@ function cobyla!(f, x::DenseVector{Cdouble};
     _check_rho(rhobeg, rhoend)
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
-    n_nl_eq, v_nl_eq, c_nl_eq = _get_nonlinear_constraints(nonlinear_eq, x, "equality")
-    n_nl_ineq, v_nl_ineq, c_nl_ineq = _get_nonlinear_constraints(nonlinear_ineq, x, "inequality")
-    n_lin_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
-    n_lin_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
+    nl_eq, c_nl_eq = _get_nonlinear_constraints(nonlinear_eq, x, "equality")
+    nl_ineq, c_nl_ineq = _get_nonlinear_constraints(nonlinear_ineq, x, "inequality")
+    A_eq, b_eq = _get_linear_constraints(linear_eq, n)
+    A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
 
-    # Total number of non-linear inequalities and vector to store them.
-    n_nl = 2*n_nl_eq + n_nl_ineq
-    v_nl = Vector{Cdouble}(undef, n_nl)
+    # Alocate vector to store all non-linear constraints (the non-linear
+    # equalities being implemented as 2 inequalities each).
+    nl_all = Vector{Cdouble}(undef, 2*length(nl_eq) + length(nl_ineq))
 
     # References for output values.
     cstrv = Ref{Cdouble}(NaN)     # to store constraint violation
@@ -428,36 +420,37 @@ function cobyla!(f, x::DenseVector{Cdouble};
 
     # Create wrapper to objective function and push it on top of per-thread
     # stack before calling optimizer.
-    fw = ObjFun(f, n, c_nl_eq, n_nl_eq, c_nl_ineq, n_nl_ineq)
+    fw = ObjFun(f, n, c_nl_eq, length(nl_eq), c_nl_ineq, length(nl_ineq))
     fp = _push_objfun(cobyla, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_cobyla(n_nl, fp, n, x, fx, cstrv, v_nl,
-                          n_lin_ineq, A_ineq, b_ineq, n_lin_eq, A_eq, b_eq,
-                          xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        status = prima_cobyla(length(nl_all), fp, n, x, fx, cstrv, nl_all,
+                              length(b_ineq), A_ineq, b_ineq,
+                              length(b_eq), A_eq, b_eq,
+                              xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
         # Unpack constraints.
-        if length(v_nl_eq) > 0
-            i = firstindex(v_nl)
-            for j in eachindex(v_nl_eq)
-                v_nl_eq[j] = v_nl[i]
+        if length(nl_eq) > 0
+            i = firstindex(nl_all)
+            for j in eachindex(nl_eq)
+                nl_eq[j] = nl_all[i]
                 i += 2
             end
         end
-        if length(v_nl_ineq) > 0
-            i = firstindex(v_nl) + 2*n_nl_eq
-            for j in eachindex(v_nl_ineq)
-                v_nl_ineq[j] = v_nl[i]
+        if length(nl_ineq) > 0
+            i = firstindex(nl_all) + 2*length(nl_eq)
+            for j in eachindex(nl_ineq)
+                nl_ineq[j] = nl_all[i]
                 i += 1
             end
         end
-        return (fx[], Int(nf[]), rc, cstrv[])
+        return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[], nl_eq, nl_ineq)
     finally
         _pop_objfun(fw)
     end
 end
 
 """
-    PRIMA.lincoa!(f, x; kwds...) -> (fx, nf, rc)
+    PRIMA.lincoa!(f, x; kwds...) -> info::PRIMA.Info
 
 in-place version of [`PRIMA.lincoa`](@ref) which to see for details. On entry,
 argument `x` is a dense vector of double precision value with the initial
@@ -481,8 +474,8 @@ function lincoa!(f, x::DenseVector{Cdouble};
     _check_npt(npt, n)
     xl = _get_lower_bound(xl, n)
     xu = _get_upper_bound(xu, n)
-    n_lin_eq, A_eq, b_eq = _get_linear_constraints(linear_eq, n)
-    n_lin_ineq, A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
+    A_eq, b_eq = _get_linear_constraints(linear_eq, n)
+    A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
 
     # References for output values.
     cstrv = Ref{Cdouble}(NaN) # to store constraint violation
@@ -495,10 +488,12 @@ function lincoa!(f, x::DenseVector{Cdouble};
     fp = _push_objfun(lincoa, fw) # pointer to C-callable function
     try
         # Call low-level optimizer.
-        rc = prima_lincoa(fp, n, x, fx, cstrv,
-                          n_lin_ineq, A_ineq, b_ineq, n_lin_eq, A_eq, b_eq, xl, xu,
-                          nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-        return (fx[], Int(nf[]), rc, cstrv[])
+        status = prima_lincoa(fp, n, x, fx, cstrv,
+                              length(b_ineq), A_ineq, b_ineq,
+                              length(b_eq), A_eq, b_eq,
+                              xl, xu,
+                              nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[])
     finally
         _pop_objfun(fw)
     end
@@ -734,7 +729,7 @@ Base.unsafe_convert(::Type{Ptr{S}}, ::NullArray{T,N}) where {T,N,S<:Union{Cvoid,
 # FIXME: Matrix A of linear constraints is in row-major order (this is imposed
 # by the C interface which transposes the matrix A).
 _get_linear_constraints(::Nothing, n::Integer) =
-    0, NullMatrix{Cdouble}(), NullVector{Cdouble}()
+    NullMatrix{Cdouble}(), NullVector{Cdouble}()
 function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
     A, b = Ab
     Base.has_offset_axes(A) && error(
@@ -758,29 +753,26 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
         end
     end
     b_ = _dense_array(T, b)
-    return m, A_, b_
+    return A_, b_
 end
 
-# Yield (n,v,c) with n the number of constraints, v a vector to store the
-# constraints on output (possibly a NullVector if the user is not interested in
-# that), and c the callable object implementing the constraints.
+# Yield (v,c) with v a vector to store the constraints on output (possibly an
+# empty vector if there are no constraints), and c the callable object
+# implementing the constraints.
 _get_nonlinear_constraints(::Nothing, x::AbstractArray, str::AbstractString) =
-    0, NullVector{Cdouble}(), nothing
+    Cdouble[], unconstrained
 _get_nonlinear_constraints(c::Tuple{Integer,Any}, x::AbstractArray, str::AbstractString) =
-    as(Int, c[1]), NullVector{Cdouble}(), c[2]
-_get_nonlinear_constraints(c::Tuple{AbstractVector,Any}, x::AbstractArray, str::AbstractString) =
-    length(c[1]), c[1], c[2]
-_get_nonlinear_constraints(c::Tuple{Any,Union{Integer,AbstractVector}}, x::AbstractArray, str::AbstractString) =
+    Vector{Cdouble}(undef, c[1]), c[2]
+_get_nonlinear_constraints(c::Tuple{Any,Integer}, x::AbstractArray, str::AbstractString) =
     _get_nonlinear_constraints(reverse(c), x, str)
 function _get_nonlinear_constraints(c::Any, x::AbstractArray, str::AbstractString)
-    # Assume c is callable.
-    try
-        v = c(x)
-        return length(v), NullVector{Cdouble}(), c
-    catch ex
-        ex isa MethodError || throw(ex)
-        throw(ArgumentError("method `c(x)` not implemented for non-linear $str constraints"))
-    end
+    # If c(x) does not yield a result convertible into a vector of double precisions
+    # values, an error will be thrown to the caller.
+    cx = c(x)
+    cx isa Real && return [as(Cdouble, cx)], c
+    cx isa AbstractVector{<:Real} && return as(Vector{Cdouble}, cx), c
+    throw(ArgumentError(string("method implementing non-linear ", str,
+                               " constraints must return a real or a vector of reals")))
 end
 
 for (uplo, def) in ((:lower, typemin),

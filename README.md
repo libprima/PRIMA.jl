@@ -82,22 +82,49 @@ These methods are called as follows:
 
 ``` julia
 using PRIMA
-x, fx, nf, rc = uobyqa(f, x0; kwds...)
-x, fx, nf, rc = newuoa(f, x0; kwds...)
-x, fx, nf, rc = bobyqa(f, x0; kwds...)
-x, fx, nf, rc, cstrv = cobyla(f, x0; kwds...)
-x, fx, nf, rc, cstrv = lincoa(f, x0; kwds...)
+x, info = uobyqa(f, x0; kwds...)
+x, info = newuoa(f, x0; kwds...)
+x, info = bobyqa(f, x0; kwds...)
+x, info = cobyla(f, x0; kwds...)
+x, info = lincoa(f, x0; kwds...)
 ```
 
-where `f` is the objective function and `x0` is the initial solution.
-Constraints and options may be specified by keywords `kwds...` (see below). The
-result is the 4-tuple `(x, fx, nf, rc)` or the 5-tuple `(x, fx, nf, rc, cstrv)`
-where `x` is the (approximate) solution found by the algorithm, `fx` is the
-value of `f(x)`, `nf` is the number of calls to `f`, `rc` is a status code (an
-enumeration value of type `PRIMA.Status`), and `cstrv` is the amount of
-constraint violation.
+where `f` is the objective function and `x0` specifies the initial values of
+the variables (and is left unchanged). Constraints and options may be specified
+by keywords `kwds...` (see below).
 
-For example, `rc` can be:
+The objective function is called as `f(x)` with `x` the variables, it must
+implement the following signature:
+
+``` julia
+f(x::Vector{Cdouble})::Real
+```
+
+All the algorithms return a 2-tuple `(x, info)` with `x` the variables and
+`info` a structured object collecting all other information. If
+`issuccess(info)` is true, then the algorithm was successful and `x` is an
+approximate solution of the problem.
+
+The output `info` has the following properties:
+
+``` julia
+info.fx       # value of the objective function f(x) on return
+info.nf       # number of calls to the objective function
+info.status   # final status code
+info.cstrv    # amount of constraints violation, 0.0 if unconstrained
+info.nl_eq    # non-linear equality constraints, empty vector if none
+info.nl_ineq  # non-linear inequality constraints, empty vector if none
+```
+
+Calling one of:
+
+``` julia
+issuccess(info)
+issuccess(info.status)
+```
+
+yield whether the algorithm has converged. If this is the case, `info.status`
+can be one of:
 
 - `PRIMA.SMALL_TR_RADIUS` if the radius of the trust region becomes smaller or
   equal the value of keyword `rhobeg`, in other words, the algorithm has
@@ -107,36 +134,14 @@ For example, `rc` can be:
   value of keyword `ftarget`, in other words, the algorithm has converged in
   terms of function value.
 
-There are other possibilities which all indicate an error. Calling:
+There are other possibilities which all indicate a failure. Calling one of:
 
 ``` julia
-PRIMA.reason(rc)
+PRIMA.reason(info)
+PRIMA.reason(info.status)
 ```
 
-yields a textual explanation about the reason that leads the algorithm to stop.
-
-For all algorithms, except `cobyla`, the user-defined function takes a single
-argument, the variables of the problem, and returns the value of the objective
-function. It has the following signature:
-
-``` julia
-function objfun(x::Vector{Cdouble})
-    return f(x)
-end
-```
-
-The `cobyla` algorithm can account for `m` non-linear constraints expressed by
-`c(x) ≤ 0`. For this algorithm, the user-defined function takes two arguments,
-the `x` variables `x` and the values taken by the constraints `cx`, it shall
-overwrite the array of constraints with `cx = c(x)` and return the value of the
-objective function. It has the following signature:
-
-``` julia
-function objfuncon(x::Vector{Cdouble}, cx::Vector{Cdouble})
-    copyto!(cx, c(x)) # set constraints
-    return f(x)       # return value of objective function
-end
-```
+yield a textual explanation about the reason that leads the algorithm to stop.
 
 The keywords allowed by the different algorithms are summarized by the
 following table.
@@ -169,8 +174,8 @@ Assuming `n = length(x)` is the number of variables, then:
   `PRIMA.FTARGET_ACHIEVED` is returned.
 
 - `iprint` (default value `PRIMA.MSG_NONE`) sets the level of verbosity of the
-   algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
-   `PRIMA.MSG_FEVL`.
+  algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
+  `PRIMA.MSG_FEVL`.
 
 - `maxfun` (default `100n`) is the maximum number of function evaluations
   allowed for the algorithm. If the number of calls to `f(x)` exceeds this
@@ -183,22 +188,18 @@ Assuming `n = length(x)` is the number of variables, then:
   M.J.D. Powell.
 
 - `xl` and `xu` (default `fill(+Inf, n)` and `fill(-Inf, n)`) are the
-  elementwise lower and upper bounds for the variables. Feasible variables are
-  such that `xl ≤ x ≤ xu` (elementwise).
+  element-wise lower and upper bounds for the variables. Feasible variables are
+  such that `xl ≤ x ≤ xu`.
 
 - `nonlinear_eq` (default `nothing`) may be specified with a function, say
-  `c_eq`, implementing `n_eq` non-linear equality constraints defined by
-  `c_eq(x) = 0`. If the caller is interested in the values of `c_eq(x)` at the
-  returned solution, the keyword may be set with a 2-tuple `(v_eq, c_eq)` or
-  `(c_eq, v_eq)` with `v_eq` a vector of `n_eq` floating-point values to store
-  `c_eq(x)`.
+  `c_eq`, implementing non-linear equality constraints defined by `c_eq(x) =
+  0`. On return, the values of the non-linear equality constraints are given by
+  `info.nl_eq` to save calling `c_eq(x)`.
 
 - `nonlinear_ineq` (default `nothing`) may be specified with a function, say
-  `c_ineq`, implementing `n_ineq` non-linear inequality constraints defined by
-  `c_ineq(x) ≤ 0`. If the caller is interested in the values of `c_ineq(x)` at
-  the returned solution, the keyword may be set with a 2-tuple `(v_ineq,
-  c_ineq)` or `(c_ineq, v_ineq)` with `v_ineq` a vector of `n_ineq`
-  floating-point values to store `c_ineq(x)`.
+  `c_ineq`, implementing non-linear inequality constraints defined by
+  `c_ineq(x) ≤ 0`. On return, the values of the non-linear inequality
+  constraints are given by `info.nl_ineq` to save calling `c_ineq(x)`.
 
 - `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
   impose the linear equality constraints `Aₑ⋅x = bₑ`.
