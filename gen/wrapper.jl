@@ -27,9 +27,11 @@ function main()
         r"\bprima_message\b" => "Message",
         r"\bprima_rc\b" => "Status",
         r"\bPRIMA_" => "",
-        # Make enum signed (see PRIMA library doc. about negative `iprint`
-        # values).
-        r"^(\s*@enum\s+\w+)\s*::\s*U(Int[0-9]*)\s+begin\s*$" => s"\1::\2 begin",
+        # Force enums to have signed value of type Cint (see PRIMA library doc.
+        # about negative `iprint` values).
+        r"^ *@enum +(\w+) *:: *U?Int\d+ +begin *$" => s"@enum \1::Cint begin",
+        # All algorithms return a Status.
+        r"\) *:: *Cint *$" => s")::Status",
         # Remove some useless code.
         r"^\s*const\s+PRIMAC_API\s*=.*$" => "",
         ]
