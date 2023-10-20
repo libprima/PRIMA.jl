@@ -16,6 +16,10 @@ objectives may be of interest:
   optimization package for single- and multi-variate problems that does not
   require the objective function to be differentiable.
 
+- [NOMAD](https://github.com/bbopt/NOMAD.jl) is an interface to the *Mesh
+  Adaptive Direct Search algorithm* (MADS) designed for difficult blackbox
+  optimization problems.
+
 Formally, these algorithms are designed to solve problems of the form:
 
 ``` julia
