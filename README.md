@@ -9,6 +9,13 @@ Powell](https://en.wikipedia.org/wiki/Michael_J._D._Powell) for minimizing a
 multi-variate objective function possibly under constraints and without
 derivatives.
 
+Depending on the problem to solve, other Julia package(s) with similar
+objectives may be of interest:
+
+- [BlackBoxOptim](https://github.com/robertfeldt/BlackBoxOptim.jl) is a global
+  optimization package for single- and multi-variate problems that does not
+  require the objective function to be differentiable.
+
 Formally, these algorithms are designed to solve problems of the form:
 
 ``` julia
