@@ -65,6 +65,22 @@ returned by one of the PRIMA optimizers.
 reason(info::Info) = reason(info.status)
 reason(status::Union{Integer,Status}) = unsafe_string(prima_get_rc_string(status))
 
+"""
+    PRIMA.LinearConstraints
+
+is the type of `(A,b)`, the 2-tuple representing linear equality constraints
+`A⋅x = b` or linear inequality constraints `A⋅x ≤ b` where `A` is a matrix, `x`
+is the vector of variables, and `b` is a vector.
+
+"""
+const LinearConstraints = Tuple{AbstractMatrix{<:Real},AbstractVector{<:Real}}
+
+# Default settings.
+default_npt(x::AbstractVector{<:Real}) = 2*length(x) + 1
+default_maxfun(x::AbstractVector{<:Real}) = 100*length(x)
+default_rhobeg() = 1.0
+default_rhoend(rhobeg::Real) = 1e-4*rhobeg
+
 # The high level wrappers. First the methods, then their documentation.
 for func in (:bobyqa, :newuoa, :uobyqa, :lincoa, :cobyla)
     func! = Symbol(func, "!")
@@ -220,8 +236,6 @@ objective function. No derivatives of the objective function are needed.
 
 $(_doc_common)
 
-$(_doc_npt)
-
 $(_doc_bound_constraints)
 
 $(_doc_linear_constraints)
@@ -267,12 +281,12 @@ variables; on return, `x` is overwritten by an approximate solution.
 function bobyqa!(f, x::DenseVector{Cdouble};
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
-                 rhobeg::Real = 1.0,
-                 rhoend::Real = 1e-4*rhobeg,
-                 iprint::Union{Integer,Message} = MSG_NONE,
+                 rhobeg::Real = default_rhobeg(),
+                 rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
-                 maxfun::Integer = 100*length(x),
-                 npt::Integer = 2*length(x) + 1)
+                 maxfun::Integer = default_maxfun(x),
+                 npt::Integer = default_npt(x),
+                 iprint::Union{Integer,Message} = MSG_NONE)
     # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
@@ -306,11 +320,11 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function newuoa!(f, x::DenseVector{Cdouble};
-                 rhobeg::Real = 1.0,
-                 rhoend::Real = 1e-4*rhobeg,
+                 rhobeg::Real = default_rhobeg(),
+                 rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
-                 maxfun::Integer = 100*length(x),
-                 npt::Integer = 2*length(x) + 1,
+                 maxfun::Integer = default_maxfun(x),
+                 npt::Integer = default_npt(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
     # Check arguments.
     n = length(x) # number of variables
@@ -343,10 +357,10 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function uobyqa!(f, x::DenseVector{Cdouble};
-                 rhobeg::Real = 1.0,
-                 rhoend::Real = 1e-4*rhobeg,
+                 rhobeg::Real = default_rhobeg(),
+                 rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
-                 maxfun::Integer = 100*length(x),
+                 maxfun::Integer = default_maxfun(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
     # Check arguments.
     n = length(x) # number of variables
@@ -370,16 +384,6 @@ function uobyqa!(f, x::DenseVector{Cdouble};
 end
 
 """
-    PRIMA.LinearConstraints
-
-is the type of `(A,b)`, the 2-tuple representing linear equality constraints
-`A⋅x = b` or linear inequality constraints `A⋅x ≤ b` where `A` is a matrix, `x`
-is the vector of variables, and `b` is a vector.
-
-"""
-const LinearConstraints = Tuple{AbstractMatrix{<:Real},AbstractVector{<:Real}}
-
-"""
     PRIMA.cobyla!(f, x; kwds...) -> info::PRIMA.Info
 
 in-place version of [`PRIMA.cobyla`](@ref) which to see for details. On entry,
@@ -388,17 +392,17 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function cobyla!(f, x::DenseVector{Cdouble};
-                 nonlinear_ineq = nothing,
-                 nonlinear_eq = nothing,
-                 linear_ineq::Union{LinearConstraints,Nothing} = nothing,
-                 linear_eq::Union{LinearConstraints,Nothing} = nothing,
+                 rhobeg::Real = default_rhobeg(),
+                 rhoend::Real = default_rhoend(rhobeg),
+                 ftarget::Real = -Inf,
+                 maxfun::Integer = default_maxfun(x),
+                 iprint::Union{Integer,Message} = MSG_NONE,
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
-                 rhobeg::Real = 1.0,
-                 rhoend::Real = 1e-4*rhobeg,
-                 ftarget::Real = -Inf,
-                 maxfun::Integer = 100*length(x),
-                 iprint::Union{Integer,Message} = MSG_NONE)
+                 linear_ineq::Union{LinearConstraints,Nothing} = nothing,
+                 linear_eq::Union{LinearConstraints,Nothing} = nothing,
+                 nonlinear_ineq = nothing,
+                 nonlinear_eq = nothing)
     # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
@@ -458,16 +462,16 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function lincoa!(f, x::DenseVector{Cdouble};
-                 linear_ineq::Union{LinearConstraints,Nothing} = nothing,
-                 linear_eq::Union{LinearConstraints,Nothing} = nothing,
+                 rhobeg::Real = default_rhobeg(),
+                 rhoend::Real = default_rhoend(rhobeg),
+                 ftarget::Real = -Inf,
+                 maxfun::Integer = default_maxfun(x),
+                 npt::Integer = default_npt(x),
+                 iprint::Union{Integer,Message} = MSG_NONE,
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
-                 rhobeg::Real = 1.0,
-                 rhoend::Real = 1e-4*rhobeg,
-                 ftarget::Real = -Inf,
-                 maxfun::Integer = 100*length(x),
-                 npt::Integer = 2*length(x) + 1,
-                 iprint::Union{Integer,Message} = MSG_NONE)
+                 linear_ineq::Union{LinearConstraints,Nothing} = nothing,
+                 linear_eq::Union{LinearConstraints,Nothing} = nothing)
     # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
