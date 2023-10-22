@@ -99,10 +99,10 @@ with `x` the variables, it must implement the following signature:
 
     f(x::Vector{Cdouble})::Real
 
-The result of the algorithm is a 2-tuple `(x, info)` with `x` the variables and
-`info` a structured object collecting other information provided by the
-algorithm (see [`PRIMA.Info`](@ref)). If `issuccess(info)` is true, then the
-algorithm was successful and `x` is an approximate solution of the problem.
+The returned result is a 2-tuple `(x, info)` with `x` the variables and `info`
+a structured object collecting other information provided by the algorithm (see
+[`PRIMA.Info`](@ref)). If `issuccess(info)` is true, then the algorithm was
+successful and `x` is an approximate solution of the problem.
 
 Allowed keywords are (`n = length(x)` is the number of variables):
 
@@ -159,7 +159,7 @@ const _doc_linear_constraints = """
 """
 
 """
-    uobyqa(f, x0; kwds...) -> (x, fx, nf, rc)
+    uobyqa(f, x0; kwds...) -> x, info
 
 approximately solves the unconstrained optimization problem:
 
@@ -219,7 +219,7 @@ $(_doc_bound_constraints)
 """ bobyqa
 
 """
-    cobyla(f, x0; kwds...) -> (x, fx, nf, rc, cstrv)
+    cobyla(f, x0; kwds...) -> x, info
 
 approximately solves the constrained optimization problem:
 
@@ -230,7 +230,7 @@ with
     Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
 
 by M.J.D. Powell's COBYLA (for \"Constrained Optimization BY Linear
-Approximations\") method. This algorithm is based on a trust region methood
+Approximations\") method. This algorithm is based on a trust region method
 where variables are updated according to a linear local approximation of the
 objective function. No derivatives of the objective function are needed.
 
@@ -245,7 +245,7 @@ $(_doc_nonlinear_constraints)
 """ cobyla
 
 """
-    lincoa(f, x0; kwds...) -> (x, fx, nf, rc, cstrv)
+    lincoa(f, x0; kwds...) -> x, info
 
 approximately solves the constrained optimization problem:
 
@@ -256,7 +256,7 @@ with
     Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, and Aᵢ⋅x ≤ bᵢ }
 
 by M.J.D. Powell's LINCOA (for \"LINearly Constrained Optimization\") method.
-This algorithm is based on a trust region methood where variables are updated
+This algorithm is based on a trust region method where variables are updated
 according to a quadratic local approximation of the objective function. No
 derivatives of the objective function are needed.
 
