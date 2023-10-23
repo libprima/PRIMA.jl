@@ -28,7 +28,7 @@ An object, say `info`, of this type has the following properties:
     info.nl_ineq  # non-linear inequality constraints, empty vector if none
 
 Call `issuccess(info)` or `issuccess(info.status)` to check whether algorithm
-was sucessful. Call `PRIMA.reason(info)` or `PRIMA.reason(info.status)` to
+was successful. Call `PRIMA.reason(info)` or `PRIMA.reason(info.status)` to
 retrieve a textual description of the algorithm termination.
 
 """
@@ -62,7 +62,7 @@ LinearAlgebra.issuccess(status::Status) =
     PRIMA.reason(info::PRIMA.Info) -> str
     PRIMA.reason(status::PRIMA.Status) -> str
 
-yield a textual message explaining `info.statu` or `status`, the status code
+yield a textual message explaining `info.status` or `status`, the status code
 returned by one of the PRIMA optimizers.
 
 """
@@ -521,7 +521,7 @@ function cobyla!(f, x::DenseVector{Cdouble};
     A_eq, b_eq = _get_linear_constraints(linear_eq, n, scl)
     A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n, scl)
 
-    # Alocate vector to store all non-linear constraints (the non-linear
+    # Allocate vector to store all non-linear constraints (the non-linear
     # equalities being implemented as 2 inequalities each).
     nl_all = Vector{Cdouble}(undef, 2*length(nl_eq) + length(nl_ineq))
 
@@ -655,7 +655,7 @@ struct ObjFun{F,E,I}
     c_ineq::I   # callable implementing non-linear inequalities as `c_ineq(x) ≤ 0`
     n_ineq::Int # number of non-linear inequalities
     scl::Vector{Cdouble} # scaling factors or empty
-    wrk::Vector{Cdouble} # workspace for variables
+    x::Vector{Cdouble}   # workspace for variables
 end
 
 unconstrained(x::AbstractVector{T}) where {T} = NullVector{T}()
@@ -691,7 +691,7 @@ end
     PRIMA.call!(f::ObjFun, x::DenseVector{Cdouble}, cx::DenseVector{Cdouble}) -> fx
 
 yields value of objective function `f(x)` for variables `x` and overwrites `cx`
-with the values `c(x)` coresponding to the non-linear inequality constraints
+with the values `c(x)` corresponding to the non-linear inequality constraints
 `c(x) ≤ 0`.
 
 The default method may be extended by specializing on the type of `f`. It is
@@ -757,8 +757,8 @@ function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
     return nothing
 end
 
-# C-callable objective function for for problems with non-linear constraints
-# (for COBYLA algorithm).
+# C-callable objective function for problems with non-linear constraints (for
+# COBYLA algorithm).
 function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
                  f_ptr::Ptr{Cdouble}, # (output) function value
                  c_ptr::Ptr{Cdouble}) # (output) constraints
@@ -781,7 +781,7 @@ function unsafe_call(f::ObjFun, x_ptr::Ptr{Cdouble}, c_ptr::Ptr{Cdouble})
 end
 
 function get_variables(f::ObjFun, x_ptr::Ptr{Cdouble})
-    n, x, scl = f.n, f.wrk, f.scl
+    n, x, scl = f.n, f.x, f.scl
     length(x) == n || corrupted_structure("invalid number of variables")
     if isempty(scl)
         # No scaling of variables.

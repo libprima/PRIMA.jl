@@ -18,20 +18,20 @@ optimizer(algo::Symbol) =
     algo === :prima  ? PRIMA.prima  :
     error("unknown optimizer `:$algo`")
 
-prt_1(x::AbstractVector, info::PRIMA.Info) = prt_1(stdout, x, info)
-function prt_1(io::IO, x::AbstractVector, info::PRIMA.Info)
+print_1(x::AbstractVector, info::PRIMA.Info) = print_1(stdout, x, info)
+function print_1(io::IO, x::AbstractVector, info::PRIMA.Info)
     msg = PRIMA.reason(info)
     println(io, "x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
 end
 
-prt_2(x::AbstractVector, info::PRIMA.Info) = prt_2(stdout, x, info)
-function prt_2(io::IO, x::AbstractVector, info::PRIMA.Info)
+print_2(x::AbstractVector, info::PRIMA.Info) = print_2(stdout, x, info)
+function print_2(io::IO, x::AbstractVector, info::PRIMA.Info)
     msg = PRIMA.reason(info)
     println(io, "x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), status = $(info.status), msg = '$msg', evals = $(info.nf)")
 end
 
-prt_3(x::AbstractVector, info::PRIMA.Info) = prt_3(stdout, x, info)
-function prt_3(io::IO, x::AbstractVector, info::PRIMA.Info)
+print_3(x::AbstractVector, info::PRIMA.Info) = print_3(stdout, x, info)
+function print_3(io::IO, x::AbstractVector, info::PRIMA.Info)
     msg = PRIMA.reason(info)
     println("x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), c(x) = $(info.nl_ineq), status = $(info.status), msg = '$msg', evals = $(info.nf)")
 end
@@ -97,7 +97,7 @@ end
             kwds = (rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
                     maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.newuoa(f, x0; kwds...)
-            prt_1(x, info)
+            print_1(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -117,7 +117,7 @@ end
             kwds = (rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
                     maxfun = 200n, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.uobyqa(f, x0; kwds...)
-            prt_1(x, info)
+            print_1(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -134,7 +134,7 @@ end
                     rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
                     maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.bobyqa(f, x0; kwds...)
-            prt_1(x, info)
+            print_1(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -158,7 +158,7 @@ end
             # First call with just the number of non-linear inequality constraints.
             x, info = @inferred PRIMA.cobyla(f, x0; kwds...,
                                              nonlinear_ineq = c_ineq)
-            prt_3(x, info)
+            print_3(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -188,7 +188,7 @@ end
                     rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
                     maxfun = 200*n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.lincoa(f, x0; kwds...)
-            prt_2(x, info)
+            print_2(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -279,7 +279,7 @@ end
             else
                 continue
             end
-            prt_1(x, info)
+            print_1(x, info)
             @test x ≈ [1,1] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
             @test f(x) ≈ info.fx
 
@@ -301,7 +301,7 @@ end
                 else
                     continue
                 end
-                prt_1(x, info)
+                print_1(x, info)
                 @test x ≈ [1.095247,1.2] rtol=0 atol=2e-2
                 @test f(x) ≈ info.fx
             end
@@ -320,7 +320,7 @@ end
                 else
                     continue
                 end
-                prt_1(x, info)
+                print_1(x, info)
                 @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ info.fx
 
@@ -337,7 +337,7 @@ end
                 else
                     continue
                 end
-                prt_1(x, info)
+                print_1(x, info)
                 @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ info.fx
 
@@ -355,7 +355,7 @@ end
                 else
                     continue
                 end
-                prt_1(x, info)
+                print_1(x, info)
                 @test x ≈ [1.441832,2.077557] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f2(x) ≈ info.fx
             end
