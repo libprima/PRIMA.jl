@@ -79,10 +79,16 @@ constraints).
 | `lincoa` | quadratic | bounds, linear             |
 | `cobyla` | affine    | bounds, linear, non-linear |
 
-These methods are called as follows:
+To use the most suitable Powell's algorithm depending on the constraints,
+simply do:
 
 ``` julia
-using PRIMA
+x, info = prima(f, x0; kwds...)
+```
+
+To explicitly use one the specific Powell's algorithms, call one of:
+
+``` julia
 x, info = uobyqa(f, x0; kwds...)
 x, info = newuoa(f, x0; kwds...)
 x, info = bobyqa(f, x0; kwds...)
@@ -90,9 +96,9 @@ x, info = cobyla(f, x0; kwds...)
 x, info = lincoa(f, x0; kwds...)
 ```
 
-where `f` is the objective function and `x0` specifies the initial values of
-the variables (and is left unchanged). Constraints and options may be specified
-by keywords `kwds...` (see below).
+In any case, `f` is the objective function and `x0` specifies the initial
+values of the variables (and is left unchanged). Constraints and options may be
+specified by keywords `kwds...` (see below).
 
 The objective function is called as `f(x)` with `x` the variables, it must
 implement the following signature:

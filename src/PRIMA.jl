@@ -4,7 +4,7 @@ using PRIMA_jll
 const libprimac = PRIMA_jll.libprimac
 include("wrappers.jl")
 
-export bobyqa, cobyla, lincoa, newuoa, uobyqa, issuccess
+export bobyqa, cobyla, lincoa, newuoa, prima, uobyqa, issuccess
 
 using TypeUtils
 using LinearAlgebra
@@ -51,6 +51,10 @@ struct Info
     end
 end
 
+Base.:(==)(a::Info, b::Info) =
+    ((a.fx == b.fx) & (a.nf == b.nf) & (a.status == b.status) & (a.cstrv == b.cstrv)) &&
+    (a.nl_eq == b.nl_eq) && (a.nl_ineq == b.nl_ineq)
+
 LinearAlgebra.issuccess(info::Info) = issuccess(info.status)
 LinearAlgebra.issuccess(status::Status) =
 
@@ -82,7 +86,7 @@ default_rhobeg() = 1.0
 default_rhoend(rhobeg::Real) = 1e-4*rhobeg
 
 # The high level wrappers. First the methods, then their documentation.
-for func in (:bobyqa, :newuoa, :uobyqa, :lincoa, :cobyla)
+for func in (:bobyqa, :cobyla, :lincoa, :newuoa, :prima, :uobyqa)
     func! = Symbol(func, "!")
     @eval begin
         function $func(f, x0::AbstractVector{<:Real}; kwds...)
@@ -157,6 +161,39 @@ const _doc_linear_constraints = """
 - `linear_ineq` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
   impose the linear inequality constraints `Aᵢ⋅x ≤ bᵢ`.
 """
+
+"""
+    prima(f, x0; kwds...) -> x, info
+
+approximately solves the constrained optimization problem:
+
+    min f(x)    subject to   x ∈ Ω ⊆ ℝⁿ
+
+with
+
+    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+
+by one of the M.J.D. Powell's algorithms COBYLA, LINCOA, BOBYQA, or NEWUOA
+depending on the constraints set by `Ω`. These algorithms are based on a trust
+region method where variables are updated according to a linear or a quadratic
+local approximation of the objective function. No derivatives of the objective
+function are needed.
+
+$(_doc_common)
+
+$(_doc_npt)
+
+$(_doc_bound_constraints)
+
+$(_doc_linear_constraints)
+
+$(_doc_nonlinear_constraints)
+
+See also [`PRIMA.cobyla`](@ref), [`PRIMA.lincoa`](@ref),
+[`PRIMA.bobyqa`](@ref), [`PRIMA.newuoa`](@ref), or [`PRIMA.uobyqa`](@ref) to
+use one of the specific Powell's algorithms.
+
+""" prima
 
 """
     uobyqa(f, x0; kwds...) -> x, info
@@ -269,6 +306,46 @@ $(_doc_bound_constraints)
 $(_doc_linear_constraints)
 
 """ lincoa
+
+"""
+    PRIMA.prima!(f, x; kwds...) -> info::PRIMA.Info
+
+in-place version of [`PRIMA.prima`](@ref) which to see for details. On entry,
+argument `x` is a dense vector of double precision value with the initial
+variables; on return, `x` is overwritten by an approximate solution.
+
+"""
+function prima!(f, x::DenseVector{Cdouble};
+                rhobeg::Real = default_rhobeg(),
+                rhoend::Real = default_rhoend(rhobeg),
+                ftarget::Real = -Inf,
+                maxfun::Integer = default_maxfun(x),
+                npt::Integer = default_npt(x),
+                iprint::Union{Integer,Message} = MSG_NONE,
+                xl::Union{AbstractVector{<:Real},Nothing} = nothing,
+                xu::Union{AbstractVector{<:Real},Nothing} = nothing,
+                linear_ineq::Union{LinearConstraints,Nothing} = nothing,
+                linear_eq::Union{LinearConstraints,Nothing} = nothing,
+                nonlinear_ineq = nothing,
+                nonlinear_eq = nothing)
+    if nonlinear_eq !== nothing || nonlinear_ineq !== nothing
+        # Only COBYLA can cope with non-linear constraints.
+        return cobyla!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun,
+                       xl, xu,  linear_ineq, linear_eq,
+                       nonlinear_ineq, nonlinear_eq)
+    elseif linear_eq !== nothing || linear_ineq !== nothing
+        # LINCOA is the most efficient for linearly constrained problems.
+        return lincoa!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun, npt,
+                       xl, xu, linear_ineq, linear_eq)
+    elseif xu !== nothing || xl !== nothing
+        # BOBYQA is designed for bound constrained problems.
+        return bobyqa!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun, npt,
+                       xl, xu)
+    else
+        # NEWUOA is more efficient than UOBYQA for unconstrained problems.
+        return newuoa!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun, npt)
+    end
+end
 
 """
     PRIMA.bobyqa!(f, x; kwds...) -> info::PRIMA.Info

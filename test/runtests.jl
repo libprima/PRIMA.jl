@@ -6,6 +6,7 @@ optimizer_name(::typeof(PRIMA.newuoa)) = "NEWUOA"
 optimizer_name(::typeof(PRIMA.bobyqa)) = "BOBYQA"
 optimizer_name(::typeof(PRIMA.cobyla)) = "COBYLA"
 optimizer_name(::typeof(PRIMA.lincoa)) = "LINCOA"
+optimizer_name(::typeof(PRIMA.prima))  = "PRIMA"
 optimizer_name(algo::Symbol) = optimizer_name(optimizer(algo))
 
 optimizer(algo::Symbol) =
@@ -14,7 +15,26 @@ optimizer(algo::Symbol) =
     algo === :bobyqa ? PRIMA.bobyqa :
     algo === :cobyla ? PRIMA.cobyla :
     algo === :lincoa ? PRIMA.lincoa :
+    algo === :prima  ? PRIMA.prima  :
     error("unknown optimizer `:$algo`")
+
+prt_1(x::AbstractVector, info::PRIMA.Info) = prt_1(stdout, x, info)
+function prt_1(io::IO, x::AbstractVector, info::PRIMA.Info)
+    msg = PRIMA.reason(info)
+    println(io, "x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+end
+
+prt_2(x::AbstractVector, info::PRIMA.Info) = prt_2(stdout, x, info)
+function prt_2(io::IO, x::AbstractVector, info::PRIMA.Info)
+    msg = PRIMA.reason(info)
+    println(io, "x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+end
+
+prt_3(x::AbstractVector, info::PRIMA.Info) = prt_3(stdout, x, info)
+function prt_3(io::IO, x::AbstractVector, info::PRIMA.Info)
+    msg = PRIMA.reason(info)
+    println("x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), c(x) = $(info.nl_ineq), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+end
 
 @testset "PRIMA.jl" begin
     @testset "Utils " begin
@@ -72,28 +92,25 @@ optimizer(algo::Symbol) =
 
         @testset "NEWUOA" begin
             println("\nNEWUOA:")
-            x, info = @inferred PRIMA.newuoa(f, x0;
-                                             rhobeg = 1.0, rhoend = 1e-3,
-                                             ftarget = -Inf,
-                                             maxfun = 200n,
-                                             npt = 2n + 1,
-                                             iprint = PRIMA.MSG_EXIT)
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+            kwds = (rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
+                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            x, info = @inferred PRIMA.newuoa(f, x0; kwds...)
+            prt_1(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
+            # Solve problem with general driver.
+            x1, info1 = @inferred PRIMA.prima(f, x0; kwds...)
+            @test x1 == x
+            @test info1 == info
         end
 
         @testset "UOBYQA" begin
             println("\nUOBYQA:")
-            x, info = @inferred PRIMA.uobyqa(f, x0;
-                                             rhobeg = 1.0, rhoend = 1e-3,
-                                             ftarget = -Inf,
-                                             maxfun = 200n,
-                                             iprint = PRIMA.MSG_EXIT)
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+            kwds = (rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
+                    maxfun = 200n, iprint = PRIMA.MSG_EXIT)
+            x, info = @inferred PRIMA.uobyqa(f, x0; kwds...)
+            prt_1(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -101,71 +118,61 @@ optimizer(algo::Symbol) =
 
         @testset "BOBYQA" begin
             println("\nBOBYQA:")
-            x, info = @inferred PRIMA.bobyqa(f, x0;
-                                             xl, xu,
-                                             rhobeg = 1.0, rhoend = 1e-3,
-                                             ftarget = -Inf,
-                                             maxfun = 200n,
-                                             npt = 2n + 1,
-                                             iprint = PRIMA.MSG_EXIT)
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+            kwds = (xl = xl, xu = xu,
+                    rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
+                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            x, info = @inferred PRIMA.bobyqa(f, x0; kwds...)
+            prt_1(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
             @test check_bounds(xl, x, xu)
+            # Solve problem with general driver.
+            x1, info1 = @inferred PRIMA.prima(f, x0; kwds...)
+            @test x1 == x
+            @test info1 == info
         end
 
         @testset "COBYLA" begin
             println("\nCOBYLA:")
+            kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
+                    rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
+                    maxfun = 200*n, iprint = PRIMA.MSG_EXIT)
             # First call with just the number of non-linear inequality constraints.
-            x, info = @inferred PRIMA.cobyla(f, x0;
-                                             nonlinear_ineq = c_ineq,
-                                             linear_ineq = (A_ineq, b_ineq),
-                                             xl, xu,
-                                             rhobeg = 1.0, rhoend = 1e-3,
-                                             ftarget = -Inf,
-                                             maxfun = 200*n,
-                                             iprint = PRIMA.MSG_EXIT)
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), c(x) = $(info.nl_ineq), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+            x, info = @inferred PRIMA.cobyla(f, x0; kwds...,
+                                             nonlinear_ineq = c_ineq)
+            prt_3(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
             @test check_bounds(xl, x, xu)
-            # Second call with an array to store the non-linear inequality constraints.
-            x, info = @inferred PRIMA.cobyla(f, x0;
-                                             nonlinear_ineq = (length(c_ineq(x0)), c_ineq),
-                                             linear_ineq = (A_ineq, b_ineq),
-                                             xl, xu,
-                                             rhobeg = 1.0, rhoend = 1e-3,
-                                             ftarget = -Inf,
-                                             maxfun = 200*n,
-                                             iprint = PRIMA.MSG_EXIT)
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), c(x) = $(info.nl_ineq), status = $(info.status), msg = '$msg', evals = $(info.nf)")
-            @test x ≈ [3,2] atol=2e-2 rtol=0
-            @test f(x) ≈ info.fx
-            @test x0 == x0_sav
-            @test check_bounds(xl, x, xu)
+            # Call with given number of non-linear inequality constraints.
+            x1, info1 = @inferred PRIMA.cobyla(f, x0; kwds...,
+                                               nonlinear_ineq = (length(c_ineq(x0)), c_ineq))
+            @test x1 == x
+            @test info1 == info
+            # Solve problem with general driver.
+            x1, info1 = @inferred PRIMA.prima(f, x0; kwds...,
+                                              nonlinear_ineq = c_ineq)
+            @test x1 == x
+            @test info1 == info
         end
 
         @testset "LINCOA" begin
             println("\nLINCOA:")
-            x, info = @inferred PRIMA.lincoa(f, x0;
-                                             linear_ineq = (A_ineq, b_ineq),
-                                             xl, xu,
-                                             rhobeg = 1.0, rhoend = 1e-3,
-                                             ftarget = -Inf,
-                                             maxfun = 200*n,
-                                             npt = 2n + 1,
-                                             iprint = PRIMA.MSG_EXIT)
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), cstrv = $(info.cstrv), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+            kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
+                    rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
+                    maxfun = 200*n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            x, info = @inferred PRIMA.lincoa(f, x0; kwds...)
+            prt_2(x, info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
             @test check_bounds(xl, x, xu)
+            # Solve problem with general driver.
+            x1, info1 = @inferred PRIMA.prima(f, x0; kwds...)
+            @test x1 == x
+            @test info1 == info
         end
     end
 
@@ -242,8 +249,7 @@ optimizer(algo::Symbol) =
             else
                 continue
             end
-            msg = PRIMA.reason(info)
-            println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+            prt_1(x, info)
             @test x ≈ [1,1] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
             @test f(x) ≈ info.fx
 
@@ -265,8 +271,7 @@ optimizer(algo::Symbol) =
                 else
                     continue
                 end
-                msg = PRIMA.reason(info)
-                println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+                prt_1(x, info)
                 @test x ≈ [1.095247,1.2] rtol=0 atol=2e-2
                 @test f(x) ≈ info.fx
             end
@@ -285,8 +290,7 @@ optimizer(algo::Symbol) =
                 else
                     continue
                 end
-                msg = PRIMA.reason(info)
-                println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+                prt_1(x, info)
                 @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ info.fx
 
@@ -303,8 +307,7 @@ optimizer(algo::Symbol) =
                 else
                     continue
                 end
-                msg = PRIMA.reason(info)
-                println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+                prt_1(x, info)
                 @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ info.fx
 
@@ -322,8 +325,7 @@ optimizer(algo::Symbol) =
                 else
                     continue
                 end
-                msg = PRIMA.reason(info)
-                println("x = $x, f(x) = $(info.fx), status = $(info.status), msg = '$msg', evals = $(info.nf)")
+                prt_1(x, info)
                 @test x ≈ [1.441832,2.077557] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f2(x) ≈ info.fx
             end

@@ -2,6 +2,10 @@
 
 ## Version 0.1.2
 
+- General method `prima(f, x0; kwds...)` which solves the problem with the most
+  suitable Powell's algorithm (among COBYLA, LINCOA, BOBYQA, or NEWUOA)
+  depending on the constraints imposed via the keywords `kwds...`.
+
 - Objective function and non-linear constraints for `cobyla`:
   - Non-linear equality constraints can be specified by keyword `nonlinear_eq`.
   - The objective function is called as `f(x)` like in other algorithms.
