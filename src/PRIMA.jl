@@ -888,7 +888,7 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer, scl::Abstrac
     T = Cdouble
     # FIXME: Like in FORTRAN, Julia matrices are in column-major storage order,
     # but we must transpose the matrix A in linear constraints because we call
-    # the FORTRAN code through a C interface which conisder that matrices are
+    # the FORTRAN code through a C interface which consider that matrices are
     # in row-major storage. As a result, the matrix `A` will be transposed
     # twice. This isn't a big issue for a small number of variables and
     # constraints, but it's not completely satisfactory either.
