@@ -1,6 +1,6 @@
 # User visible changes in `PRIMA.jl`
 
-## Version 0.1.2
+## Version 0.2.0
 
 - General method `prima(f, x0; kwds...)` which solves the problem with the most
   suitable Powell's algorithm (among COBYLA, LINCOA, BOBYQA, or NEWUOA)
