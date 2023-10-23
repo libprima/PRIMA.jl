@@ -32,12 +32,14 @@ variables, and `n ≥ 1` is the number of variables. The most general feasible
 set is:
 
 ``` julia
-Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, cₑ(x) = 0, and cᵢ(x) ≤ 0 }
 ```
 
 where `xl ∈ ℝⁿ` and `xu ∈ ℝⁿ` are lower and upper bounds, `Aₑ` and `bₑ`
 implement linear equality constraints, `Aᵢ` and `bᵢ` implement linear
-inequality constraints, and `c: ℝⁿ → ℝᵐ` implements `m` non-linear constraints.
+inequality constraints, `cₑ: ℝⁿ → ℝᵐ` implements `m` non-linear equality
+constraints, and `cᵢ: ℝⁿ → ℝʳ` implements `r` non-linear inequality
+constraints.
 
 The five Powell's algorithms of the [PRIMA
 library](https://github.com/libprima/prima) are provided by the `PRIMA`

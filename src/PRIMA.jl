@@ -171,7 +171,7 @@ approximately solves the constrained optimization problem:
 
 with
 
-    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, cₑ(x) = 0, and cᵢ(x) ≤ 0 }
 
 by one of the M.J.D. Powell's algorithms COBYLA, LINCOA, BOBYQA, or NEWUOA
 depending on the constraints set by `Ω`. These algorithms are based on a trust
@@ -264,7 +264,7 @@ approximately solves the constrained optimization problem:
 
 with
 
-    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+    Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, cₑ(x) = 0, and cᵢ(x) ≤ 0 }
 
 by M.J.D. Powell's COBYLA (for \"Constrained Optimization BY Linear
 Approximations\") method. This algorithm is based on a trust region method
