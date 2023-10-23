@@ -28,6 +28,15 @@
   - `PRIMA.reason(info)` yields a textual description of the termination status
     of the algorithm.
 
+- Scaling of the variables: the variables `x ∈ ℝⁿ` may be scaled by the scaling
+  factors provided by the caller via keywords `scale` to re-express the problem
+  in the scaled variables `u ∈ ℝⁿ` such that `u[i] = x[i]/scale[i]`. Note that
+  the objective function, the constraints (linear and non-linear), and the
+  bounds remain specified in the variables. Scaling the variables is useful to
+  improve the conditioning of the problem, to make the scaled variables `u`
+  having approximately the same magnitude, and to adapt to heterogeneous
+  variables or with different units.
+
 ## Version 0.1.1
 
 - Keywords for other constraints than bounds have been renamed as

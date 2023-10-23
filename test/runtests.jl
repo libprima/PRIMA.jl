@@ -71,6 +71,8 @@ end
         x0 = [0.0, 0.0]
         n = length(x0)
         x0_sav = copy(x0) # for testing that x0 does not get overwritten
+        scl = 2.0 # scaling factor, a power of two should not change results
+        scale = [scl, scl]
 
         # Inequality constraints: x₁ ≤ 4, x₂ ≤ 3, x₁ + x₂ ≤ 10
         A_ineq = [1.0 0.0;
@@ -103,6 +105,11 @@ end
             x1, info1 = @inferred PRIMA.prima(f, x0; kwds...)
             @test x1 == x
             @test info1 == info
+            # Solve problem with scaling factors.
+            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
+                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            x1, info1 = @inferred PRIMA.newuoa(f, x0; kwds...)
+            @test x1 ≈ x
         end
 
         @testset "UOBYQA" begin
@@ -114,6 +121,11 @@ end
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
+            # Solve problem with scaling factors.
+            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
+                    maxfun = 200n, iprint = PRIMA.MSG_EXIT)
+            x1, info1 = @inferred PRIMA.uobyqa(f, x0; kwds...)
+            @test x1 ≈ x
         end
 
         @testset "BOBYQA" begin
@@ -131,6 +143,11 @@ end
             x1, info1 = @inferred PRIMA.prima(f, x0; kwds...)
             @test x1 == x
             @test info1 == info
+            # Solve problem with scaling factors.
+            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
+                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            x1, info1 = @inferred PRIMA.bobyqa(f, x0; kwds...)
+            @test x1 ≈ x
         end
 
         @testset "COBYLA" begin
@@ -156,6 +173,13 @@ end
                                               nonlinear_ineq = c_ineq)
             @test x1 == x
             @test info1 == info
+            # Solve problem with scaling factors.
+            kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
+                    scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
+                    maxfun = 200n, iprint = PRIMA.MSG_EXIT)
+            x1, info1 = @inferred PRIMA.cobyla(f, x0; kwds...,
+                                               nonlinear_ineq = c_ineq)
+            @test x1 ≈ x
         end
 
         @testset "LINCOA" begin
@@ -173,6 +197,12 @@ end
             x1, info1 = @inferred PRIMA.prima(f, x0; kwds...)
             @test x1 == x
             @test info1 == info
+            # Solve problem with scaling factors.
+            kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
+                    scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
+                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            x1, info1 = @inferred PRIMA.lincoa(f, x0; kwds...)
+            @test x1 ≈ x
         end
     end
 

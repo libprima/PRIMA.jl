@@ -172,6 +172,23 @@ following table.
 
 Assuming `n = length(x)` is the number of variables, then:
 
+- `scale` (default value `nothing`) may be set with a vector of `n` positive
+  scaling factors. If specified, the problem is solved in the scaled variables
+  `u ∈ ℝⁿ` such that `u[i] = x[i]/scale[i]`. If unspecified, it is assumed that
+  `scale[i] = 1` for all variables. Note that the objective function, the
+  constraints (linear and non-linear), and the bounds remain specified in the
+  variables. Scaling the variables is useful to improve the conditioning of the
+  problem, to make the scaled variables `u` having approximately the same
+  magnitude, and to adapt to heterogeneous variables or with different units.
+
+- `rhobeg` (default value `1.0`) is the initial radius of the trust region. The
+  radius of the trust region is given by the Euclidean norm of the scaled
+  variables (see keyword `scale` above).
+
+- `rhoend` (default value `1e-$*rhobeg`) is the final radius of the trust
+  region used to decide whether the algorithm has converged in the scaled
+  variables.
+
 - `rhobeg` (default value `1.0`) is the initial radius of the trust region.
 
 - `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
@@ -184,7 +201,8 @@ Assuming `n = length(x)` is the number of variables, then:
 
 - `iprint` (default value `PRIMA.MSG_NONE`) sets the level of verbosity of the
   algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
-  `PRIMA.MSG_FEVL`.
+  `PRIMA.MSG_FEVL`. Note that the values that are printed by the software are
+  those of the scaled variables (see keyword `scale` above).
 
 - `maxfun` (default `100n`) is the maximum number of function evaluations
   allowed for the algorithm. If the number of calls to `f(x)` exceeds this

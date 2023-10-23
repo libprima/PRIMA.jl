@@ -82,8 +82,10 @@ const LinearConstraints = Tuple{AbstractMatrix{<:Real},AbstractVector{<:Real}}
 # Default settings.
 default_npt(x::AbstractVector{<:Real}) = 2*length(x) + 1
 default_maxfun(x::AbstractVector{<:Real}) = 100*length(x)
-default_rhobeg() = 1.0
-default_rhoend(rhobeg::Real) = 1e-4*rhobeg
+const default_scale = nothing
+const default_rhobeg = 1.0
+const default_rhoend_relative = 1e-4
+default_rhoend(rhobeg::Real) = default_rhoend_relative*rhobeg
 
 # The high level wrappers. First the methods, then their documentation.
 for func in (:bobyqa, :cobyla, :lincoa, :newuoa, :prima, :uobyqa)
@@ -110,10 +112,23 @@ successful and `x` is an approximate solution of the problem.
 
 Allowed keywords are (`n = length(x)` is the number of variables):
 
-- `rhobeg` (default value `1.0`) is the initial radius of the trust region.
+- `scale` (default value `$default_scale`) may be set with a vector of `n`
+  positive scaling factors. If specified, the problem is solved in the scaled
+  variables `u ∈ ℝⁿ` such that `u[i] = x[i]/scale[i]`. If unspecified, it is
+  assumed that `scale[i] = 1` for all variables. Note that the objective
+  function, the constraints (linear and non-linear), and the bounds remain
+  specified in the variables. Scaling the variables is useful to improve the
+  conditioning of the problem, to make the scaled variables `u` having
+  approximately the same magnitude, and to adapt to heterogeneous variables or
+  with different units.
 
-- `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
-  region used to decide whether the algorithm has converged in the variables.
+- `rhobeg` (default value `$default_rhobeg`) is the initial radius of the trust
+  region. The radius of the trust region is given by the Euclidean norm of the
+  scaled variables (see keyword `scale` above).
+
+- `rhoend` (default value `$default_rhoend_relative*rhobeg`) is the final
+  radius of the trust region used to decide whether the algorithm has converged
+  in the scaled variables.
 
 - `ftarget` (default value `-Inf`) is another convergence setting. The
   algorithm is stopped as soon as `f(x) ≤ ftarget` and the status
@@ -126,7 +141,8 @@ Allowed keywords are (`n = length(x)` is the number of variables):
 
 - `iprint` (default value `PRIMA.MSG_NONE`) sets the level of verbosity of the
    algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
-   `PRIMA.MSG_FEVL`.
+   `PRIMA.MSG_FEVL`. Note that the values that are printed by the software
+   are those of the scaled variables (see keyword `scale` above).
 """
 
 const _doc_npt = """
@@ -316,7 +332,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function prima!(f, x::DenseVector{Cdouble};
-                rhobeg::Real = default_rhobeg(),
+                scale::Union{AbstractVector{<:Real},Nothing} = default_scale,
+                rhobeg::Real = default_rhobeg,
                 rhoend::Real = default_rhoend(rhobeg),
                 ftarget::Real = -Inf,
                 maxfun::Integer = default_maxfun(x),
@@ -330,20 +347,20 @@ function prima!(f, x::DenseVector{Cdouble};
                 nonlinear_eq = nothing)
     if nonlinear_eq !== nothing || nonlinear_ineq !== nothing
         # Only COBYLA can cope with non-linear constraints.
-        return cobyla!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun,
+        return cobyla!(f, x; scale, rhobeg, rhoend, iprint, ftarget, maxfun,
                        xl, xu,  linear_ineq, linear_eq,
                        nonlinear_ineq, nonlinear_eq)
     elseif linear_eq !== nothing || linear_ineq !== nothing
         # LINCOA is the most efficient for linearly constrained problems.
-        return lincoa!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun, npt,
+        return lincoa!(f, x; scale, rhobeg, rhoend, iprint, ftarget, maxfun, npt,
                        xl, xu, linear_ineq, linear_eq)
     elseif xu !== nothing || xl !== nothing
         # BOBYQA is designed for bound constrained problems.
-        return bobyqa!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun, npt,
+        return bobyqa!(f, x; scale, rhobeg, rhoend, iprint, ftarget, maxfun, npt,
                        xl, xu)
     else
         # NEWUOA is more efficient than UOBYQA for unconstrained problems.
-        return newuoa!(f, x; rhobeg, rhoend, iprint, ftarget, maxfun, npt)
+        return newuoa!(f, x; scale, rhobeg, rhoend, iprint, ftarget, maxfun, npt)
     end
 end
 
@@ -356,20 +373,22 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function bobyqa!(f, x::DenseVector{Cdouble};
+                 scale::Union{AbstractVector{<:Real},Nothing} = default_scale,
+                 rhobeg::Real = default_rhobeg,
+                 rhoend::Real = default_rhoend(rhobeg),
                  xl::Union{AbstractVector{<:Real},Nothing} = nothing,
                  xu::Union{AbstractVector{<:Real},Nothing} = nothing,
-                 rhobeg::Real = default_rhobeg(),
-                 rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
                  maxfun::Integer = default_maxfun(x),
                  npt::Integer = default_npt(x),
                  iprint::Union{Integer,Message} = MSG_NONE)
     # Check arguments and get constraints.
     n = length(x) # number of variables
-    _check_rho(rhobeg, rhoend)
     _check_npt(npt, n)
-    xl = _get_lower_bound(xl, n)
-    xu = _get_upper_bound(xu, n)
+    _check_rho(rhobeg, rhoend)
+    scl = _get_scaling(scale, n)
+    xl = _get_lower_bound(xl, n, scl)
+    xu = _get_upper_bound(xu, n, scl)
 
     # References for output values.
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
@@ -377,11 +396,13 @@ function bobyqa!(f, x::DenseVector{Cdouble};
 
     # Create wrapper to objective function and push it on top of per-thread
     # stack before calling optimizer.
-    fw = ObjFun(f, n)             # wrapper to objective function
+    fw = ObjFun(f, n, scl)        # wrapper to objective function
     fp = _push_objfun(bobyqa, fw) # pointer to C-callable function
     try
-        # Call low-level optimizer.
+        # Call low-level optimizer on the (scaled) variables.
+        isempty(scl) || _scale!(x, /, scl)
         status = prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        isempty(scl) || _scale!(x, *, scl)
         return Info(; fx = fx[], nf = nf[], status)
     finally
         _pop_objfun(fw)
@@ -397,7 +418,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function newuoa!(f, x::DenseVector{Cdouble};
-                 rhobeg::Real = default_rhobeg(),
+                 scale::Union{AbstractVector{<:Real},Nothing} = default_scale,
+                 rhobeg::Real = default_rhobeg,
                  rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
                  maxfun::Integer = default_maxfun(x),
@@ -405,8 +427,9 @@ function newuoa!(f, x::DenseVector{Cdouble};
                  iprint::Union{Integer,Message} = MSG_NONE)
     # Check arguments.
     n = length(x) # number of variables
-    _check_rho(rhobeg, rhoend)
     _check_npt(npt, n)
+    _check_rho(rhobeg, rhoend)
+    scl = _get_scaling(scale, n)
 
     # References for output values.
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
@@ -414,11 +437,13 @@ function newuoa!(f, x::DenseVector{Cdouble};
 
     # Create wrapper to objective function and push it on top of per-thread
     # stack before calling optimizer.
-    fw = ObjFun(f, n)             # wrapper to objective function
+    fw = ObjFun(f, n, scl)        # wrapper to objective function
     fp = _push_objfun(newuoa, fw) # pointer to C-callable function
     try
-        # Call low-level optimizer.
+        # Call low-level optimizer on the (scaled) variables.
+        isempty(scl) || _scale!(x, /, scl)
         status = prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        isempty(scl) || _scale!(x, *, scl)
         return Info(; fx = fx[], nf = nf[], status)
     finally
         _pop_objfun(fw)
@@ -434,7 +459,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function uobyqa!(f, x::DenseVector{Cdouble};
-                 rhobeg::Real = default_rhobeg(),
+                 scale::Union{AbstractVector{<:Real},Nothing} = default_scale,
+                 rhobeg::Real = default_rhobeg,
                  rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
                  maxfun::Integer = default_maxfun(x),
@@ -442,6 +468,7 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     # Check arguments.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
+    scl = _get_scaling(scale, n)
 
     # References for output values.
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
@@ -449,11 +476,13 @@ function uobyqa!(f, x::DenseVector{Cdouble};
 
     # Create wrapper to objective function and push it on top of per-thread
     # stack before calling optimizer.
-    fw = ObjFun(f, n)             # wrapper to objective function
+    fw = ObjFun(f, n, scl)        # wrapper to objective function
     fp = _push_objfun(uobyqa, fw) # pointer to C-callable function
     try
-        # Call low-level optimizer.
+        # Call low-level optimizer on the (scaled) variables.
+        isempty(scl) || _scale!(x, /, scl)
         status = prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        isempty(scl) || _scale!(x, *, scl)
         return Info(; fx = fx[], nf = nf[], status)
     finally
         _pop_objfun(fw)
@@ -469,7 +498,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function cobyla!(f, x::DenseVector{Cdouble};
-                 rhobeg::Real = default_rhobeg(),
+                 scale::Union{AbstractVector{<:Real},Nothing} = default_scale,
+                 rhobeg::Real = default_rhobeg,
                  rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
                  maxfun::Integer = default_maxfun(x),
@@ -483,12 +513,13 @@ function cobyla!(f, x::DenseVector{Cdouble};
     # Check arguments and get constraints.
     n = length(x) # number of variables
     _check_rho(rhobeg, rhoend)
-    xl = _get_lower_bound(xl, n)
-    xu = _get_upper_bound(xu, n)
+    scl = _get_scaling(scale, n)
+    xl = _get_lower_bound(xl, n, scl)
+    xu = _get_upper_bound(xu, n, scl)
     nl_eq, c_nl_eq = _get_nonlinear_constraints(nonlinear_eq, x, "equality")
     nl_ineq, c_nl_ineq = _get_nonlinear_constraints(nonlinear_ineq, x, "inequality")
-    A_eq, b_eq = _get_linear_constraints(linear_eq, n)
-    A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
+    A_eq, b_eq = _get_linear_constraints(linear_eq, n, scl)
+    A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n, scl)
 
     # Alocate vector to store all non-linear constraints (the non-linear
     # equalities being implemented as 2 inequalities each).
@@ -501,14 +532,16 @@ function cobyla!(f, x::DenseVector{Cdouble};
 
     # Create wrapper to objective function and push it on top of per-thread
     # stack before calling optimizer.
-    fw = ObjFun(f, n, c_nl_eq, length(nl_eq), c_nl_ineq, length(nl_ineq))
+    fw = ObjFun(f, n, scl, c_nl_eq, length(nl_eq), c_nl_ineq, length(nl_ineq))
     fp = _push_objfun(cobyla, fw) # pointer to C-callable function
     try
-        # Call low-level optimizer.
+        # Call low-level optimizer on the (scaled) variables.
+        isempty(scl) || _scale!(x, /, scl)
         status = prima_cobyla(length(nl_all), fp, n, x, fx, cstrv, nl_all,
                               length(b_ineq), A_ineq, b_ineq,
                               length(b_eq), A_eq, b_eq,
                               xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
+        isempty(scl) || _scale!(x, *, scl)
         # Unpack constraints.
         if length(nl_eq) > 0
             i = firstindex(nl_all)
@@ -539,7 +572,8 @@ variables; on return, `x` is overwritten by an approximate solution.
 
 """
 function lincoa!(f, x::DenseVector{Cdouble};
-                 rhobeg::Real = default_rhobeg(),
+                 scale::Union{AbstractVector{<:Real},Nothing} = default_scale,
+                 rhobeg::Real = default_rhobeg,
                  rhoend::Real = default_rhoend(rhobeg),
                  ftarget::Real = -Inf,
                  maxfun::Integer = default_maxfun(x),
@@ -551,12 +585,13 @@ function lincoa!(f, x::DenseVector{Cdouble};
                  linear_eq::Union{LinearConstraints,Nothing} = nothing)
     # Check arguments and get constraints.
     n = length(x) # number of variables
-    _check_rho(rhobeg, rhoend)
     _check_npt(npt, n)
-    xl = _get_lower_bound(xl, n)
-    xu = _get_upper_bound(xu, n)
-    A_eq, b_eq = _get_linear_constraints(linear_eq, n)
-    A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n)
+    _check_rho(rhobeg, rhoend)
+    scl = _get_scaling(scale, n)
+    xl = _get_lower_bound(xl, n, scl)
+    xu = _get_upper_bound(xu, n, scl)
+    A_eq, b_eq = _get_linear_constraints(linear_eq, n, scl)
+    A_ineq, b_ineq = _get_linear_constraints(linear_ineq, n, scl)
 
     # References for output values.
     cstrv = Ref{Cdouble}(NaN) # to store constraint violation
@@ -565,15 +600,17 @@ function lincoa!(f, x::DenseVector{Cdouble};
 
     # Create wrapper to objective function and push it on top of per-thread
     # stack before calling optimizer.
-    fw = ObjFun(f, n)             # wrapper to objective function
+    fw = ObjFun(f, n, scl)        # wrapper to objective function
     fp = _push_objfun(lincoa, fw) # pointer to C-callable function
     try
-        # Call low-level optimizer.
+        # Call low-level optimizer on the (scaled) variables.
+        isempty(scl) || _scale!(x, /, scl)
         status = prima_lincoa(fp, n, x, fx, cstrv,
                               length(b_ineq), A_ineq, b_ineq,
                               length(b_eq), A_eq, b_eq,
                               xl, xu,
                               nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
+        isempty(scl) || _scale!(x, *, scl)
         return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[])
     finally
         _pop_objfun(fw)
@@ -617,11 +654,17 @@ struct ObjFun{F,E,I}
     n_eq::Int   # number of non-linear equalities
     c_ineq::I   # callable implementing non-linear inequalities as `c_ineq(x) ≤ 0`
     n_ineq::Int # number of non-linear inequalities
+    scl::Vector{Cdouble} # scaling factors or empty
+    wrk::Vector{Cdouble} # workspace for variables
 end
 
 unconstrained(x::AbstractVector{T}) where {T} = NullVector{T}()
 
-ObjFun(f::F, n::Integer) where {F} = ObjFun(f, n, unconstrained, 0, unconstrained, 0)
+ObjFun(f, n::Integer, scl::AbstractVector) =
+    ObjFun(f, n, scl, unconstrained, 0, unconstrained, 0)
+
+ObjFun(f, n::Integer, scl::AbstractVector, c_eq, n_eq::Integer, c_ineq, n_ineq::Integer) =
+    ObjFun(f, n, c_eq, n_eq, c_ineq, n_ineq, scl, Vector{Cdouble}(undef, n))
 
 """
     PRIMA.call(f::ObjFun, x::DenseVector{Cdouble}) -> fx
@@ -727,15 +770,37 @@ function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
 end
 
 function unsafe_call(f::ObjFun, x_ptr::Ptr{Cdouble})
-    x = unsafe_wrap(Array, x_ptr, f.n)
+    x = get_variables(f, x_ptr)
     return as(Cdouble, call(f, x))
 end
 
 function unsafe_call(f::ObjFun, x_ptr::Ptr{Cdouble}, c_ptr::Ptr{Cdouble})
-    x = unsafe_wrap(Array, x_ptr, f.n)
+    x = get_variables(f, x_ptr)
     c = unsafe_wrap(Array, c_ptr, 2*f.n_eq + f.n_ineq)
     return as(Cdouble, call!(f, x, c))
 end
+
+function get_variables(f::ObjFun, x_ptr::Ptr{Cdouble})
+    n, x, scl = f.n, f.wrk, f.scl
+    length(x) == n || corrupted_structure("invalid number of variables")
+    if isempty(scl)
+        # No scaling of variables.
+        @inbounds for i in 1:n
+            x[i] = unsafe_load(x_ptr, i)
+        end
+    elseif length(scl) == n
+        # Scale variables.
+        @inbounds for i in 1:n
+            x[i] = scl[i]*unsafe_load(x_ptr, i)
+        end
+    else
+        corrupted_structure("invalid number of scaling factors")
+    end
+    return x
+end
+
+@noinline corrupted_structure(msg::AbstractString) =
+    throw(AssertionError("corrupted structure ($msg)"))
 
 # Global variable storing the per-thread stacks of objective functions indexed
 # by thread identifier and then by execution order. On start of an
@@ -809,14 +874,14 @@ Base.unsafe_convert(::Type{Ptr{S}}, ::NullArray{T,N}) where {T,N,S<:Union{Cvoid,
 
 # FIXME: Matrix A of linear constraints is in row-major order (this is imposed
 # by the C interface which transposes the matrix A).
-_get_linear_constraints(::Nothing, n::Integer) =
+_get_linear_constraints(::Nothing, n::Integer, scl::AbstractVector) =
     NullMatrix{Cdouble}(), NullVector{Cdouble}()
-function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
+function _get_linear_constraints(Ab::LinearConstraints, n::Integer, scl::AbstractVector)
     A, b = Ab
-    Base.has_offset_axes(A) && error(
-        "matrix `A` of linear constraints must have 1-based indices")
-    Base.has_offset_axes(b) && error(
-        "vector `b` of linear constraints must have 1-based indices")
+    Base.has_offset_axes(A) && throw(ArgumentError(
+        "matrix `A` of linear constraints must have 1-based indices"))
+    Base.has_offset_axes(b) && throw(ArgumentError(
+        "vector `b` of linear constraints must have 1-based indices"))
     m = length(b) # number of constraints
     size(A) == (m,n) || throw(DimensionMismatch(
         "matrix `A` of linear constraints has incompatible dimensions"))
@@ -828,9 +893,20 @@ function _get_linear_constraints(Ab::LinearConstraints, n::Integer)
     # twice. This isn't a big issue for a small number of variables and
     # constraints, but it's not completely satisfactory either.
     A_ = Matrix{T}(undef, n, m)
-    @inbounds for i ∈ 1:m
-        for j ∈ 1:n
-            A_[j,i] = A[i,j]
+    if isempty(scl)
+        # No scaling of the variables.
+        @inbounds for i ∈ 1:m
+            for j ∈ 1:n
+                A_[j,i] = A[i,j]
+            end
+        end
+    else
+        # Scaling matrix of linear constraints to account for the scaling of
+        # the variables.
+        @inbounds for i ∈ 1:m
+            for j ∈ 1:n
+                A_[j,i] = A[i,j]*scl[j]
+            end
         end
     end
     b_ = _dense_array(T, b)
@@ -856,17 +932,30 @@ function _get_nonlinear_constraints(c::Any, x::AbstractArray, str::AbstractStrin
                                " constraints must return a real or a vector of reals")))
 end
 
+# Encode _get_lower_bound and _get_upper_bound. These methods assume that scl
+# and n have been checked.
 for (uplo, def) in ((:lower, typemin),
                     (:upper, typemax))
     func = Symbol("_get_$(uplo)_bound")
     @eval begin
-        $func(::Nothing, n::Integer) = fill($def(Cdouble), n)
-        function $func(b::AbstractVector, n::Integer)
+        $func(::Nothing, n::Integer, scl::AbstractVector) = fill($def(Cdouble), n)
+        function $func(b::AbstractVector, n::Integer, scl::AbstractVector)
             Base.has_offset_axes(b) && error(
                 $("$uplo bound must have 1-based indices"))
             length(b) == n || throw(DimensionMismatch(string(
                 $("$uplo bound must have "), n, " elements")))
-            return _dense_array(Cdouble, b)
+            if length(scl) == 0
+                # No scaling of variables. For type-stability, ensure that an
+                # ordinary vector is returned.
+                return convert(Vector{Cdouble}, b)
+            else
+                # Modify the bounds to account for the scaling of the variables.
+                b_ = Vector{Cdouble}(undef, n)
+                @inbounds for i in 1:n
+                    b_[i] = b[i]/scl[i]
+                end
+                return b_
+            end
         end
     end
 end
@@ -876,4 +965,24 @@ end
 _dense_array(::Type{T}, A::DenseArray{T,N}) where {T,N} = A
 _dense_array(::Type{T}, A::AbstractArray{<:Any,N}) where {N,T} = convert(Array{T,N}, A)
 
+# Scale variables.
+function _scale!(x::AbstractVector, op, scl::AbstractVector)
+    @inbounds for i in eachindex(x, scl)
+        x[i] = op(x[i], scl[i])
+    end
+    return nothing
 end
+
+# Yield scl, rhobeg, and rhoend given the arguments.
+_get_scaling(scl::Nothing, n::Int) = Cdouble[]
+function _get_scaling(scl::AbstractVector{<:Real}, n::Int)
+    Base.has_offset_axes(scl) && throw(ArgumentError(
+        "vector of scaling factors must have 1-based indices"))
+    length(scl) == n || throw(ArgumentError(
+        "vector of scaling factors have incompatible number of elements"))
+    all(x -> isfinite(x) & (x > zero(x)), scl) || throw(ArgumentError(
+        "scaling factor(s) must be finite and positive"))
+    return convert(Vector{Cdouble}, scl)
+end
+
+end # module
