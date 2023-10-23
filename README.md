@@ -9,7 +9,19 @@ Powell](https://en.wikipedia.org/wiki/Michael_J._D._Powell) for minimizing a
 multi-variate objective function possibly under constraints and without
 derivatives.
 
-Formally, these algorithms are designed to solve problems of the form:
+Depending on the problem to solve, other Julia package(s) with similar
+objectives may be of interest:
+
+- [BlackBoxOptim](https://github.com/robertfeldt/BlackBoxOptim.jl) is a global
+  optimization package for single- and multi-variate problems that does not
+  require the objective function to be differentiable.
+
+- [NOMAD](https://github.com/bbopt/NOMAD.jl) is an interface to the *Mesh
+  Adaptive Direct Search algorithm* (MADS) designed for difficult black-box
+  optimization problems.
+
+Formally, the algorithms provided by `PRIMA` are designed to solve problems of
+the form:
 
 ``` julia
 min f(x)    subject to   x ∈ Ω ⊆ ℝⁿ
@@ -20,12 +32,14 @@ variables, and `n ≥ 1` is the number of variables. The most general feasible
 set is:
 
 ``` julia
-Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, and c(x) ≤ 0 }
+Ω = { x ∈ ℝⁿ | xl ≤ x ≤ xu, Aₑ⋅x = bₑ, Aᵢ⋅x ≤ bᵢ, cₑ(x) = 0, and cᵢ(x) ≤ 0 }
 ```
 
 where `xl ∈ ℝⁿ` and `xu ∈ ℝⁿ` are lower and upper bounds, `Aₑ` and `bₑ`
 implement linear equality constraints, `Aᵢ` and `bᵢ` implement linear
-inequality constraints, and `c: ℝⁿ → ℝᵐ` implements `m` non-linear constraints.
+inequality constraints, `cₑ: ℝⁿ → ℝᵐ` implements `m` non-linear equality
+constraints, and `cᵢ: ℝⁿ → ℝʳ` implements `r` non-linear inequality
+constraints.
 
 The five Powell's algorithms of the [PRIMA
 library](https://github.com/libprima/prima) are provided by the `PRIMA`
@@ -67,26 +81,59 @@ constraints).
 | `lincoa` | quadratic | bounds, linear             |
 | `cobyla` | affine    | bounds, linear, non-linear |
 
-These methods are called as follows:
+To use the most suitable Powell's algorithm depending on the constraints,
+simply do:
 
 ``` julia
-using PRIMA
-x, fx, nf, rc = uobyqa(f, x0; kwds...)
-x, fx, nf, rc = newuoa(f, x0; kwds...)
-x, fx, nf, rc = bobyqa(f, x0; kwds...)
-x, fx, nf, rc, cstrv = cobyla(f, x0; kwds...)
-x, fx, nf, rc, cstrv = lincoa(f, x0; kwds...)
+x, info = prima(f, x0; kwds...)
 ```
 
-where `f` is the objective function and `x0` is the initial solution.
-Constraints and options may be specified by keywords `kwds...` (see below). The
-result is the 4-tuple `(x, fx, nf, rc)` or the 5-tuple `(x, fx, nf, rc, cstrv)`
-where `x` is the (approximate) solution found by the algorithm, `fx` is the
-value of `f(x)`, `nf` is the number of calls to `f`, `rc` is a status code (an
-enumeration value of type `PRIMA.Status`), and `cstrv` is the amount of
-constraint violation.
+To explicitly use one the specific Powell's algorithms, call one of:
 
-For example, `rc` can be:
+``` julia
+x, info = uobyqa(f, x0; kwds...)
+x, info = newuoa(f, x0; kwds...)
+x, info = bobyqa(f, x0; kwds...)
+x, info = cobyla(f, x0; kwds...)
+x, info = lincoa(f, x0; kwds...)
+```
+
+In any case, `f` is the objective function and `x0` specifies the initial
+values of the variables (and is left unchanged). Constraints and options may be
+specified by keywords `kwds...` (see below).
+
+The objective function is called as `f(x)` with `x` the variables, it must
+implement the following signature:
+
+``` julia
+f(x::Vector{Cdouble})::Real
+```
+
+All the algorithms return a 2-tuple `(x, info)` with `x` the variables and
+`info` a structured object collecting all other information. If
+`issuccess(info)` is true, then the algorithm was successful and `x` is an
+approximate solution of the problem.
+
+The output `info` has the following properties:
+
+``` julia
+info.fx       # value of the objective function f(x) on return
+info.nf       # number of calls to the objective function
+info.status   # final status code
+info.cstrv    # amount of constraints violation, 0.0 if unconstrained
+info.nl_eq    # non-linear equality constraints, empty vector if none
+info.nl_ineq  # non-linear inequality constraints, empty vector if none
+```
+
+Calling one of:
+
+``` julia
+issuccess(info)
+issuccess(info.status)
+```
+
+yield whether the algorithm has converged. If this is the case, `info.status`
+can be one of:
 
 - `PRIMA.SMALL_TR_RADIUS` if the radius of the trust region becomes smaller or
   equal the value of keyword `rhobeg`, in other words, the algorithm has
@@ -96,36 +143,14 @@ For example, `rc` can be:
   value of keyword `ftarget`, in other words, the algorithm has converged in
   terms of function value.
 
-There are other possibilities which all indicate an error. Calling:
+There are other possibilities which all indicate a failure. Calling one of:
 
 ``` julia
-PRIMA.reason(rc)
+PRIMA.reason(info)
+PRIMA.reason(info.status)
 ```
 
-yields a textual explanation about the reason that leads the algorithm to stop.
-
-For all algorithms, except `cobyla`, the user-defined function takes a single
-argument, the variables of the problem, and returns the value of the objective
-function. It has the following signature:
-
-``` julia
-function objfun(x::Vector{Cdouble})
-    return f(x)
-end
-```
-
-The `cobyla` algorithm can account for `m` non-linear constraints expressed by
-`c(x) ≤ 0`. For this algorithm, the user-defined function takes two arguments,
-the `x` variables `x` and the values taken by the constraints `cx`, it shall
-overwrite the array of constraints with `cx = c(x)` and return the value of the
-objective function. It has the following signature:
-
-``` julia
-function objfuncon(x::Vector{Cdouble}, cx::Vector{Cdouble})
-    copyto!(cx, c(x)) # set constraints
-    return f(x)       # return value of objective function
-end
-```
+yield a textual explanation about the reason that leads the algorithm to stop.
 
 The keywords allowed by the different algorithms are summarized by the
 following table.
@@ -140,11 +165,29 @@ following table.
 | `npt`            | Number of points in local model        | `bobyqa`, `lincoa`, `newuoa` |
 | `xl`             | Lower bound                            | `bobyqa`, `cobyla`, `lincoa` |
 | `xu`             | Upper bound                            | `bobyqa`, `cobyla`, `lincoa` |
+| `nonlinear_eq`   | Non-linear equality constraints        | `cobyla`                     |
 | `nonlinear_ineq` | Non-linear inequality constraints      | `cobyla`                     |
 | `linear_eq`      | Linear equality constraints            | `cobyla`, `lincoa`           |
 | `linear_ineq`    | Linear inequality constraints          | `cobyla`, `lincoa`           |
 
 Assuming `n = length(x)` is the number of variables, then:
+
+- `scale` (default value `nothing`) may be set with a vector of `n` positive
+  scaling factors. If specified, the problem is solved in the scaled variables
+  `u ∈ ℝⁿ` such that `u[i] = x[i]/scale[i]`. If unspecified, it is assumed that
+  `scale[i] = 1` for all variables. Note that the objective function, the
+  constraints (linear and non-linear), and the bounds remain specified in the
+  variables. Scaling the variables is useful to improve the conditioning of the
+  problem, to make the scaled variables `u` having approximately the same
+  magnitude, and to adapt to heterogeneous variables or with different units.
+
+- `rhobeg` (default value `1.0`) is the initial radius of the trust region. The
+  radius of the trust region is given by the Euclidean norm of the scaled
+  variables (see keyword `scale` above).
+
+- `rhoend` (default value `1e-$*rhobeg`) is the final radius of the trust
+  region used to decide whether the algorithm has converged in the scaled
+  variables.
 
 - `rhobeg` (default value `1.0`) is the initial radius of the trust region.
 
@@ -157,8 +200,9 @@ Assuming `n = length(x)` is the number of variables, then:
   `PRIMA.FTARGET_ACHIEVED` is returned.
 
 - `iprint` (default value `PRIMA.MSG_NONE`) sets the level of verbosity of the
-   algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
-   `PRIMA.MSG_FEVL`.
+  algorithm. Possible values are `PRIMA.MSG_EXIT`, `PRIMA.MSG_RHO`, or
+  `PRIMA.MSG_FEVL`. Note that the values that are printed by the software are
+  those of the scaled variables (see keyword `scale` above).
 
 - `maxfun` (default `100n`) is the maximum number of function evaluations
   allowed for the algorithm. If the number of calls to `f(x)` exceeds this
@@ -171,22 +215,24 @@ Assuming `n = length(x)` is the number of variables, then:
   M.J.D. Powell.
 
 - `xl` and `xu` (default `fill(+Inf, n)` and `fill(-Inf, n)`) are the
-  elementwise lower and upper bounds for the variables. Feasible variables are
-  such that `xl ≤ x ≤ xu` (elementwise).
+  element-wise lower and upper bounds for the variables. Feasible variables are
+  such that `xl ≤ x ≤ xu`.
 
-- `nonlinear_ineq` (default `nothing`) may be specified with the number `m` of
-   non-linear inequality constraints expressed `c(x) ≤ 0`. If the caller is
-   interested in the values of `c(x)` at the returned solution, the keyword may
-   be set with a vector of `m` double precision floating-point values to store
-   `c(x)`. This keyword only exists for `cobyla`.
+- `nonlinear_eq` (default `nothing`) may be specified with a function, say
+  `c_eq`, implementing non-linear equality constraints defined by `c_eq(x) =
+  0`. On return, the values of the non-linear equality constraints are given by
+  `info.nl_eq` to save calling `c_eq(x)`.
+
+- `nonlinear_ineq` (default `nothing`) may be specified with a function, say
+  `c_ineq`, implementing non-linear inequality constraints defined by
+  `c_ineq(x) ≤ 0`. On return, the values of the non-linear inequality
+  constraints are given by `info.nl_ineq` to save calling `c_ineq(x)`.
 
 - `linear_eq` (default `nothing`) may be specified as a tuple `(Aₑ,bₑ)` to
-  represent linear equality constraints. Feasible variables are such that `Aₑ⋅x
-  = bₑ` holds elementwise.
+  impose the linear equality constraints `Aₑ⋅x = bₑ`.
 
 - `linear_ineq` (default `nothing`) may be specified as a tuple `(Aᵢ,bᵢ)` to
-  represent linear inequality constraints. Feasible variables are such that
-  `Aᵢ⋅x ≤ bᵢ` holds elementwise.
+  impose the linear inequality constraints `Aᵢ⋅x ≤ bᵢ`.
 
 
 ## References

@@ -1,11 +1,11 @@
-@enum Message::Int32 begin
+@enum Message::Cint begin
     MSG_NONE = 0
     MSG_EXIT = 1
     MSG_RHO = 2
     MSG_FEVL = 3
 end
 
-@enum Status::Int32 begin
+@enum Status::Cint begin
     SMALL_TR_RADIUS = 0
     FTARGET_ACHIEVED = 1
     TRSUBP_FAILED = 2
@@ -39,21 +39,21 @@ function prima_bobyqa(calfun, n, x, f, xl, xu, nf, rhobeg, rhoend, ftarget, maxf
                                   f::Ptr{Cdouble}, xl::Ptr{Cdouble}, xu::Ptr{Cdouble},
                                   nf::Ptr{Cint}, rhobeg::Cdouble, rhoend::Cdouble,
                                   ftarget::Cdouble, maxfun::Cint, npt::Cint,
-                                  iprint::Cint)::Cint
+                                  iprint::Cint)::Status
 end
 
 function prima_newuoa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
     @ccall libprimac.prima_newuoa(calfun::prima_obj, n::Cint, x::Ptr{Cdouble},
                                   f::Ptr{Cdouble}, nf::Ptr{Cint}, rhobeg::Cdouble,
                                   rhoend::Cdouble, ftarget::Cdouble, maxfun::Cint,
-                                  npt::Cint, iprint::Cint)::Cint
+                                  npt::Cint, iprint::Cint)::Status
 end
 
 function prima_uobyqa(calfun, n, x, f, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
     @ccall libprimac.prima_uobyqa(calfun::prima_obj, n::Cint, x::Ptr{Cdouble},
                                   f::Ptr{Cdouble}, nf::Ptr{Cint}, rhobeg::Cdouble,
                                   rhoend::Cdouble, ftarget::Cdouble, maxfun::Cint,
-                                  iprint::Cint)::Cint
+                                  iprint::Cint)::Status
 end
 
 function prima_cobyla(m_nlcon, calcfc, n, x, f, cstrv, nlconstr, m_ineq, Aineq, bineq, m_eq,
@@ -64,7 +64,7 @@ function prima_cobyla(m_nlcon, calcfc, n, x, f, cstrv, nlconstr, m_ineq, Aineq, 
                                   bineq::Ptr{Cdouble}, m_eq::Cint, Aeq::Ptr{Cdouble},
                                   beq::Ptr{Cdouble}, xl::Ptr{Cdouble}, xu::Ptr{Cdouble},
                                   nf::Ptr{Cint}, rhobeg::Cdouble, rhoend::Cdouble,
-                                  ftarget::Cdouble, maxfun::Cint, iprint::Cint)::Cint
+                                  ftarget::Cdouble, maxfun::Cint, iprint::Cint)::Status
 end
 
 function prima_lincoa(calfun, n, x, f, cstrv, m_ineq, Aineq, bineq, m_eq, Aeq, beq, xl, xu,
@@ -75,5 +75,5 @@ function prima_lincoa(calfun, n, x, f, cstrv, m_ineq, Aineq, bineq, m_eq, Aeq, b
                                   Aeq::Ptr{Cdouble}, beq::Ptr{Cdouble}, xl::Ptr{Cdouble},
                                   xu::Ptr{Cdouble}, nf::Ptr{Cint}, rhobeg::Cdouble,
                                   rhoend::Cdouble, ftarget::Cdouble, maxfun::Cint,
-                                  npt::Cint, iprint::Cint)::Cint
+                                  npt::Cint, iprint::Cint)::Status
 end

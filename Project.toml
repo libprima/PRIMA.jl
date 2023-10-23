@@ -1,9 +1,10 @@
 name = "PRIMA"
 uuid = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr> and contributors"]
-version = "0.1.1"
+version = "0.2.0"
 
 [deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PRIMA_jll = "eead6e0c-2d5b-5641-a95c-b722de96d551"
 TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 
