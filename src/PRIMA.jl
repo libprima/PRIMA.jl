@@ -9,6 +9,9 @@ export bobyqa, cobyla, lincoa, newuoa, prima, uobyqa, issuccess
 using TypeUtils
 using LinearAlgebra
 
+isdefined(Base, :get_extension) || using Requires
+
+
 #------------------------------------------------------------------------------
 # PUBLIC INTERFACE
 
@@ -990,15 +993,12 @@ for func in (:uobyqa, :newuoa, :bobyqa, :lincoa, :cobyla, :prima)
         error("invalid arguments or `CUTEst` package not yet loaded")
 end
 
-@static if !isdefined(Base, :get_extension)
-    using Requires
-    function __init__()
-        if !isdefined(Base, :get_extension)
-            @require CUTEst = "1b53aba6-35b6-5f92-a507-53c67d53f819" include(
-                "../ext/PRIMACUTEstExt.jl")
-            @require NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6" include(
-                "../ext/PRIMANLPModelsExt.jl")
-        end
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require CUTEst = "1b53aba6-35b6-5f92-a507-53c67d53f819" include(
+            "../ext/PRIMACUTEstExt.jl")
+        @require NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6" include(
+            "../ext/PRIMANLPModelsExt.jl")
     end
 end
 
