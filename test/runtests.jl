@@ -361,6 +361,19 @@ end
             end
         end
     end
+
+    @testset "User examples" begin
+        # See https://github.com/libprima/PRIMA.jl/issues/19
+        let cost_func(x) = sum(abs2, x), x0 = randn(4),
+            opts = (rhobeg=0.1, rhoend=1e-8)
+            @testset "$algo" for algo in (:uobyqa, :newuoa, :bobyqa,
+                                          :cobyla, :lincoa, :prima)
+                optim = optimizer(algo)
+                x1, res = @inferred optim(cost_func, x0; opts...)
+                @test maximum(abs.(x1)) ≤ 1e-8
+            end
+        end
+    end
 end
 
 nothing
