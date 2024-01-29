@@ -1,13 +1,9 @@
 module PRIMACUTEstExt
 
 if isdefined(Base, :get_extension)
-    using NLPModels
-    using CUTEst
-    using PRIMA
+    using PRIMA, CUTEst
 else
-    using ..NLPModels
-    using ..CUTEst
-    using ..PRIMA
+    using ..PRIMA, ..CUTEst
 end
 
 for func in (:uobyqa, :newuoa, :bobyqa, :lincoa, :cobyla, :prima)

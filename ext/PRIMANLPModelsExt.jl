@@ -1,18 +1,16 @@
 module PRIMANLPModelsExt
 
 if isdefined(Base, :get_extension)
-    using NLPModels
-    using PRIMA
+    using PRIMA, NLPModels
 else
-    using ..NLPModels
-    using ..PRIMA
+    using ..PRIMA, ..NLPModels
 end
 
 # This structure is to wrap a non-linear problem model into a callable object.
 struct ObjectiveFunction{F<:AbstractNLPModel} <: Function
     nlp::F
 end
-(f::ObjectiveFunction)(x::AbstractVector) = obj(f.nlp, x)
+(f::ObjectiveFunction)(x::AbstractVector) = NLPModels.obj(f.nlp, x)
 
 function check_variables(nlp::AbstractNLPModel, x0::AbstractVector)
     length(x0) == get_nvar(nlp) || error(
