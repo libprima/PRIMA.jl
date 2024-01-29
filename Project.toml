@@ -31,4 +31,4 @@ NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "CUTEst"]

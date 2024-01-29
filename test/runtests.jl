@@ -374,6 +374,13 @@ end
             end
         end
     end
+
+    @testset "Unconstrained CUTEst problem $name" for name in ("TOINTQOR", "OSBORNEB", "LANCZOS1LS",)
+        x1, res = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
+        x2, res = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
+        @test x1 ≈ x2
+    end
+
 end
 
 nothing
