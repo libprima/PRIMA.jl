@@ -1,5 +1,6 @@
 using PRIMA
 using Test, TypeUtils
+using CUTEst
 
 optimizer_name(::typeof(PRIMA.uobyqa)) = "UOBYQA"
 optimizer_name(::typeof(PRIMA.newuoa)) = "NEWUOA"
