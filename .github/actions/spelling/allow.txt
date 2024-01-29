@@ -2182,3 +2182,11 @@ typemin
 typeof
 uplo
 webclient
+nlin
+nlp
+nnln
+nvar
+PRIMACUT
+PRIMANLP
+uvar
+weakdeps
