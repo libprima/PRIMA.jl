@@ -185,12 +185,6 @@ Assuming `n = length(x)` is the number of variables, then:
   radius of the trust region is given by the Euclidean norm of the scaled
   variables (see keyword `scale` above).
 
-- `rhoend` (default value `1e-$*rhobeg`) is the final radius of the trust
-  region used to decide whether the algorithm has converged in the scaled
-  variables.
-
-- `rhobeg` (default value `1.0`) is the initial radius of the trust region.
-
 - `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
   region. The algorithm stops when the trust region radius becomes smaller or
   equal `rhoend` and the status `PRIMA.SMALL_TR_RADIUS` is returned.
