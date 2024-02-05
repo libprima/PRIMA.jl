@@ -99,6 +99,7 @@ end
                     maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.newuoa(f, x0; kwds...)
             print_1(x, info)
+            @test issuccess(info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -119,6 +120,7 @@ end
                     maxfun = 200n, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.uobyqa(f, x0; kwds...)
             print_1(x, info)
+            @test issuccess(info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -136,6 +138,7 @@ end
                     maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.bobyqa(f, x0; kwds...)
             print_1(x, info)
+            @test issuccess(info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -160,6 +163,7 @@ end
             x, info = @inferred PRIMA.cobyla(f, x0; kwds...,
                                              nonlinear_ineq = c_ineq)
             print_3(x, info)
+            @test issuccess(info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -190,6 +194,7 @@ end
                     maxfun = 200*n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.lincoa(f, x0; kwds...)
             print_2(x, info)
+            @test issuccess(info)
             @test x ≈ [3,2] atol=2e-2 rtol=0
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
@@ -281,6 +286,7 @@ end
                 continue
             end
             print_1(x, info)
+            @test issuccess(info)
             @test x ≈ [1,1] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
             @test f(x) ≈ info.fx
 
@@ -303,6 +309,7 @@ end
                     continue
                 end
                 print_1(x, info)
+                @test issuccess(info)
                 @test x ≈ [1.095247,1.2] rtol=0 atol=2e-2
                 @test f(x) ≈ info.fx
             end
@@ -322,6 +329,7 @@ end
                     continue
                 end
                 print_1(x, info)
+                @test issuccess(info)
                 @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ info.fx
 
@@ -339,6 +347,7 @@ end
                     continue
                 end
                 print_1(x, info)
+                @test issuccess(info)
                 @test x ≈ [1.0,1.0] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f(x) ≈ info.fx
 
@@ -357,6 +366,7 @@ end
                     continue
                 end
                 print_1(x, info)
+                @test issuccess(info)
                 @test x ≈ [1.441832,2.077557] rtol=0 atol=(optim == :cobyla ? 3e-2 : 2e-2)
                 @test f2(x) ≈ info.fx
             end
@@ -371,6 +381,7 @@ end
                                           :cobyla, :lincoa, :prima)
                 optim = optimizer(algo)
                 x1, res = @inferred optim(cost_func, x0; opts...)
+                @test issuccess(res)
                 @test maximum(abs.(x1)) ≤ 1e-8
             end
         end
@@ -378,8 +389,10 @@ end
 
     if Sys.WORD_SIZE > 32
         @testset "Unconstrained CUTEst problem $name" for name in ("TOINTQOR", "OSBORNEB", "LANCZOS1LS",)
-            x1, res = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
-            x2, res = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
+            x1, res1 = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
+            @test issuccess(res1)
+            x2, res2 = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
+            @test issuccess(res2)
             @test x1 ≈ x2
         end
     end

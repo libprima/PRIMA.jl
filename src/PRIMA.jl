@@ -60,6 +60,7 @@ Base.:(==)(a::Info, b::Info) =
 
 LinearAlgebra.issuccess(info::Info) = issuccess(info.status)
 LinearAlgebra.issuccess(status::Status) =
+    status == SMALL_TR_RADIUS || status == FTARGET_ACHIEVED
 
 """
     PRIMA.reason(info::PRIMA.Info) -> str
