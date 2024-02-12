@@ -85,13 +85,7 @@ end
         xl = [-6.0, -6.0]
         xu = [ 6.0,  6.0]
 
-        function check_bounds(xl, x, xu)
-            flag = true
-            for (lᵢ, xᵢ, uᵢ) in zip(xl, x, xu)
-                flag &= lᵢ ≤ xᵢ ≤ uᵢ
-            end
-            return flag
-        end
+        check_bounds(xl, x, xu) = all(xl .≤ x .≤ xu)
 
         @testset "NEWUOA" begin
             println("\nNEWUOA:")
