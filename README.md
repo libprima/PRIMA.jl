@@ -185,7 +185,7 @@ Assuming `n = length(x)` is the number of variables, then:
   radius of the trust region is given by the Euclidean norm of the scaled
   variables (see keyword `scale` above).
 
-- `rhoend` (default value `1e-4*rhobeg`) is the final radius of the trust
+- `rhoend` (default value `1e-6*rhobeg`) is the final radius of the trust
   region. The algorithm stops when the trust region radius becomes smaller or
   equal `rhoend` and the status `PRIMA.SMALL_TR_RADIUS` is returned.
 
@@ -198,7 +198,7 @@ Assuming `n = length(x)` is the number of variables, then:
   `PRIMA.MSG_FEVL`. Note that the values that are printed by the software are
   those of the scaled variables (see keyword `scale` above).
 
-- `maxfun` (default `100n`) is the maximum number of function evaluations
+- `maxfun` (default `500×n`) is the maximum number of function evaluations
   allowed for the algorithm. If the number of calls to `f(x)` exceeds this
   value, the algorithm is stopped and the status `PRIMA.MAXFUN_REACHED` is
   returned.
