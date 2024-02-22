@@ -198,7 +198,7 @@ Assuming `n = length(x)` is the number of variables, then:
   `PRIMA.MSG_FEVL`. Note that the values that are printed by the software are
   those of the scaled variables (see keyword `scale` above).
 
-- `maxfun` (default `500×n`) is the maximum number of function evaluations
+- `maxfun` (default `500*n`) is the maximum number of function evaluations
   allowed for the algorithm. If the number of calls to `f(x)` exceeds this
   value, the algorithm is stopped and the status `PRIMA.MAXFUN_REACHED` is
   returned.
