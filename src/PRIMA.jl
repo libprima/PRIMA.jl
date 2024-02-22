@@ -85,10 +85,11 @@ const LinearConstraints = Tuple{AbstractMatrix{<:Real},AbstractVector{<:Real}}
 
 # Default settings.
 default_npt(x::AbstractVector{<:Real}) = 2*length(x) + 1
-default_maxfun(x::AbstractVector{<:Real}) = 100*length(x)
+const default_maxfun_dim_relative = 500
+default_maxfun(x::AbstractVector{<:Real}) = default_maxfun_dim_relative * length(x)
 const default_scale = nothing
 const default_rhobeg = 1.0
-const default_rhoend_relative = 1e-4
+const default_rhoend_relative = 1e-6
 default_rhoend(rhobeg::Real) = default_rhoend_relative*rhobeg
 
 # The high level wrappers. First the methods, then their documentation.
@@ -138,7 +139,7 @@ Allowed keywords are (`n = length(x)` is the number of variables):
   algorithm is stopped as soon as `f(x) ≤ ftarget` and the status
   `PRIMA.FTARGET_ACHIEVED` is returned.
 
-- `maxfun` (default `100n`) is the maximum number of function evaluations
+- `maxfun` (default `$default_maxfun_dim_relative *n`) is the maximum number of function evaluations
   allowed for the algorithm. If the number of calls to `f(x)` exceeds this
   value, the algorithm is stopped and the status `PRIMA.MAXFUN_REACHED` is
   returned.
