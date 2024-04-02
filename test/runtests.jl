@@ -89,8 +89,8 @@ end
 
         @testset "NEWUOA" begin
             println("\nNEWUOA:")
-            kwds = (rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
-                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            kwds = (rhobeg = 1.0, rhoend = 1e-6, ftarget = -Inf,
+                    maxfun = 500n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.newuoa(f, x0; kwds...)
             print_1(x, info)
             @test issuccess(info)
@@ -102,16 +102,16 @@ end
             @test x1 == x
             @test info1 == info
             # Solve problem with scaling factors.
-            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
-                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-6/scl, ftarget = -Inf,
+                    maxfun = 500n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x1, info1 = @inferred PRIMA.newuoa(f, x0; kwds...)
             @test x1 ≈ x
         end
 
         @testset "UOBYQA" begin
             println("\nUOBYQA:")
-            kwds = (rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
-                    maxfun = 200n, iprint = PRIMA.MSG_EXIT)
+            kwds = (rhobeg = 1.0, rhoend = 1e-6, ftarget = -Inf,
+                    maxfun = 500n, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.uobyqa(f, x0; kwds...)
             print_1(x, info)
             @test issuccess(info)
@@ -119,8 +119,8 @@ end
             @test f(x) ≈ info.fx
             @test x0 == x0_sav
             # Solve problem with scaling factors.
-            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
-                    maxfun = 200n, iprint = PRIMA.MSG_EXIT)
+            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-6/scl, ftarget = -Inf,
+                    maxfun = 500n, iprint = PRIMA.MSG_EXIT)
             x1, info1 = @inferred PRIMA.uobyqa(f, x0; kwds...)
             @test x1 ≈ x
         end
@@ -128,8 +128,8 @@ end
         @testset "BOBYQA" begin
             println("\nBOBYQA:")
             kwds = (xl = xl, xu = xu,
-                    rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
-                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+                    rhobeg = 1.0, rhoend = 1e-6, ftarget = -Inf,
+                    maxfun = 500n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.bobyqa(f, x0; kwds...)
             print_1(x, info)
             @test issuccess(info)
@@ -142,8 +142,8 @@ end
             @test x1 == x
             @test info1 == info
             # Solve problem with scaling factors.
-            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
-                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+            kwds = (scale, rhobeg = 1.0/scl, rhoend = 1e-6/scl, ftarget = -Inf,
+                    maxfun = 500n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x1, info1 = @inferred PRIMA.bobyqa(f, x0; kwds...)
             @test x1 ≈ x
         end
@@ -151,8 +151,8 @@ end
         @testset "COBYLA" begin
             println("\nCOBYLA:")
             kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
-                    rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
-                    maxfun = 200*n, iprint = PRIMA.MSG_EXIT)
+                    rhobeg = 1.0, rhoend = 1e-6, ftarget = -Inf,
+                    maxfun = 500n, iprint = PRIMA.MSG_EXIT)
             # First call with just the number of non-linear inequality constraints.
             x, info = @inferred PRIMA.cobyla(f, x0; kwds...,
                                              nonlinear_ineq = c_ineq)
@@ -174,8 +174,8 @@ end
             @test info1 == info
             # Solve problem with scaling factors.
             kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
-                    scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
-                    maxfun = 200n, iprint = PRIMA.MSG_EXIT)
+                    scale, rhobeg = 1.0/scl, rhoend = 1e-6/scl, ftarget = -Inf,
+                    maxfun = 500n, iprint = PRIMA.MSG_EXIT)
             x1, info1 = @inferred PRIMA.cobyla(f, x0; kwds...,
                                                nonlinear_ineq = c_ineq)
             @test x1 ≈ x
@@ -184,8 +184,8 @@ end
         @testset "LINCOA" begin
             println("\nLINCOA:")
             kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
-                    rhobeg = 1.0, rhoend = 1e-3, ftarget = -Inf,
-                    maxfun = 200*n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+                    rhobeg = 1.0, rhoend = 1e-6, ftarget = -Inf,
+                    maxfun = 500n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x, info = @inferred PRIMA.lincoa(f, x0; kwds...)
             print_2(x, info)
             @test issuccess(info)
@@ -199,8 +199,8 @@ end
             @test info1 == info
             # Solve problem with scaling factors.
             kwds = (xl = xl, xu = xu, linear_ineq = (A_ineq, b_ineq),
-                    scale, rhobeg = 1.0/scl, rhoend = 1e-3/scl, ftarget = -Inf,
-                    maxfun = 200n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
+                    scale, rhobeg = 1.0/scl, rhoend = 1e-6/scl, ftarget = -Inf,
+                    maxfun = 500n, npt = 2n + 1, iprint = PRIMA.MSG_EXIT)
             x1, info1 = @inferred PRIMA.lincoa(f, x0; kwds...)
             @test x1 ≈ x
         end
