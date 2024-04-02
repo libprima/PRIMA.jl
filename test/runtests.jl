@@ -247,7 +247,7 @@ end
         f2(x, cx) = f2(x)
         n = 2
         rhobeg = 1.0
-        rhoend = 1e-5
+        rhoend = 1e-6
         ftarget = -Inf
         maxfun = 3000n
         npt = 2n + 1
