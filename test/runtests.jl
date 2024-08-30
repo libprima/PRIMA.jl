@@ -1,6 +1,8 @@
 using PRIMA
 using Test, TypeUtils
-using CUTEst
+if Sys.WORD_SIZE > 32 || Sys.iswindows()
+    using CUTEst
+end
 
 optimizer_name(::typeof(PRIMA.uobyqa)) = "UOBYQA"
 optimizer_name(::typeof(PRIMA.newuoa)) = "NEWUOA"
@@ -381,14 +383,16 @@ end
         end
     end
 
-    @testset "Unconstrained CUTEst problem $name" for name in ("TOINTQOR", "OSBORNEB", "LANCZOS1LS",)
-        # x1, res1 = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
-        x1, res1 = PRIMA.prima_CUTEst(name; maxfun=5000)
-        @test issuccess(res1)
-        # x2, res2 = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
-        x2, res2 = PRIMA.newuoa_CUTEst(name; maxfun=5000)
-        @test issuccess(res2)
-        @test x1 ≈ x2
+    if Sys.WORD_SIZE > 32 || Sys.iswindows()
+        @testset "Unconstrained CUTEst problem $name" for name in ("TOINTQOR", "OSBORNEB", "LANCZOS1LS",)
+            # x1, res1 = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
+            x1, res1 = PRIMA.prima_CUTEst(name; maxfun=5000)
+            @test issuccess(res1)
+            # x2, res2 = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
+            x2, res2 = PRIMA.newuoa_CUTEst(name; maxfun=5000)
+            @test issuccess(res2)
+            @test x1 ≈ x2
+        end
     end
 
 end
