@@ -18,8 +18,8 @@ PRIMACUTEstExt = "CUTEst"
 PRIMANLPModelsExt = "NLPModels"
 
 [compat]
-CUTEst = "0.13"
-NLPModels = "0.20"
+CUTEst = "1.0.0"
+NLPModels = "0.21.3"
 PRIMA_jll = "0.7.1"
 Requires = "1"
 TypeUtils = "0.3"
