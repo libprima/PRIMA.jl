@@ -7,10 +7,10 @@ else
 end
 
 for func in (:uobyqa, :newuoa, :bobyqa, :lincoa, :cobyla, :prima)
-    @eval function PRIMA.$(Symbol(func,"_CUTEst"))(name::AbstractString; kwds...)
-        nlp = CUTEstModel(name)
+    @eval function PRIMA.$(Symbol(func,"_CUTEst"))(name::AbstractString; kwargs...)
+        nlp = CUTEstModel{Float64}(name)
         try
-            return $func(nlp; kwds...)
+            return $func(nlp; kwargs...)
         finally
             finalize(nlp)
         end

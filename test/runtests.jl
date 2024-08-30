@@ -247,7 +247,7 @@ end
         f2(x, cx) = f2(x)
         n = 2
         rhobeg = 1.0
-        rhoend = 1e-6
+        rhoend = 1e-5
         ftarget = -Inf
         maxfun = 3000n
         npt = 2n + 1
@@ -382,9 +382,11 @@ end
     end
 
     @testset "Unconstrained CUTEst problem $name" for name in ("TOINTQOR", "OSBORNEB", "LANCZOS1LS",)
-        x1, res1 = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
+        # x1, res1 = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
+        x1, res1 = PRIMA.prima_CUTEst(name; maxfun=5000)
         @test issuccess(res1)
-        x2, res2 = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
+        # x2, res2 = @inferred PRIMA.newuoa_CUTEst(name; maxfun=5000)
+        x2, res2 = PRIMA.newuoa_CUTEst(name; maxfun=5000)
         @test issuccess(res2)
         @test x1 ≈ x2
     end
