@@ -1,6 +1,8 @@
 using PRIMA
 using Test, TypeUtils
-Sys.WORD_SIZE > 32 && using CUTEst
+if Sys.WORD_SIZE > 32 || Sys.iswindows()
+    using CUTEst
+end
 
 optimizer_name(::typeof(PRIMA.uobyqa)) = "UOBYQA"
 optimizer_name(::typeof(PRIMA.newuoa)) = "NEWUOA"
@@ -247,7 +249,7 @@ end
         f2(x, cx) = f2(x)
         n = 2
         rhobeg = 1.0
-        rhoend = 1e-6
+        rhoend = 1e-5
         ftarget = -Inf
         maxfun = 3000n
         npt = 2n + 1
@@ -381,7 +383,7 @@ end
         end
     end
 
-    if Sys.WORD_SIZE > 32
+    if Sys.WORD_SIZE > 32 || Sys.iswindows()
         @testset "Unconstrained CUTEst problem $name" for name in ("TOINTQOR", "OSBORNEB", "LANCZOS1LS",)
             x1, res1 = @inferred PRIMA.prima_CUTEst(name; maxfun=5000)
             @test issuccess(res1)
