@@ -1,7 +1,7 @@
 name = "PRIMA"
 uuid = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr> and contributors"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
