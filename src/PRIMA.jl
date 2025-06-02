@@ -814,14 +814,24 @@ end
 # call, whatever happens. It is therefore necessary to wrap the call to the
 # optimization method in a `try-finally` clause.
 const _objfun_stack = Vector{Vector{ObjFun}}(undef, 0)
+const _objfun_lock = Threads.SpinLock()
 
 # Private function `_get_objfun_stack` yields the stack of objective functions
 # for the caller thread.
 function _get_objfun_stack()
     i = Threads.threadid()
-    while length(_objfun_stack) < i
-        push!(_objfun_stack, Vector{ObjFun}(undef, 0))
+    
+    if length(_objfun_stack) < i
+        lock(_objfun_lock)
+        try
+            while length(_objfun_stack) < i
+                push!(_objfun_stack, Vector{ObjFun}(undef, 0))
+            end
+        finally
+            unlock(_objfun_lock)
+        end
     end
+    
     return _objfun_stack[i]
 end
 
