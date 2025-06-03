@@ -399,19 +399,16 @@ function bobyqa!(f, x::DenseVector{Cdouble};
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
 
-    # Create wrapper to objective function and push it on top of per-thread
-    # stack before calling optimizer.
-    fw = ObjFun(f, n, scl)        # wrapper to objective function
-    fp = _push_objfun(bobyqa, fw) # pointer to C-callable function
-    try
-        # Call low-level optimizer on the (scaled) variables.
-        isempty(scl) || _scale!(x, /, scl)
-        status = prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-        isempty(scl) || _scale!(x, *, scl)
-        return Info(; fx = fx[], nf = nf[], status)
-    finally
-        _pop_objfun(fw)
+    # Call low-level optimizer on the scaled variables and with a wrapper to the objective
+    # function stored in the task local storage.
+    isempty(scl) || _scale!(x, /, scl)
+    fw = ObjFun(f, n, scl)   # wrapper to objective function
+    fp = _objfun_ptr(bobyqa) # pointer to C-callable function
+    status = task_local_storage(:objfun, fw) do
+        prima_bobyqa(fp, n, x, fx, xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
     end
+    isempty(scl) || _scale!(x, *, scl)
+    return Info(; fx = fx[], nf = nf[], status)
 end
 
 """
@@ -440,19 +437,16 @@ function newuoa!(f, x::DenseVector{Cdouble};
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
 
-    # Create wrapper to objective function and push it on top of per-thread
-    # stack before calling optimizer.
-    fw = ObjFun(f, n, scl)        # wrapper to objective function
-    fp = _push_objfun(newuoa, fw) # pointer to C-callable function
-    try
-        # Call low-level optimizer on the (scaled) variables.
-        isempty(scl) || _scale!(x, /, scl)
-        status = prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-        isempty(scl) || _scale!(x, *, scl)
-        return Info(; fx = fx[], nf = nf[], status)
-    finally
-        _pop_objfun(fw)
+    # Call low-level optimizer on the scaled variables and with a wrapper to the objective
+    # function stored in the task local storage.
+    isempty(scl) || _scale!(x, /, scl)
+    fw = ObjFun(f, n, scl)   # wrapper to objective function
+    fp = _objfun_ptr(newuoa) # pointer to C-callable function
+    status = task_local_storage(:objfun, fw) do
+        prima_newuoa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
     end
+    isempty(scl) || _scale!(x, *, scl)
+    return Info(; fx = fx[], nf = nf[], status)
 end
 
 """
@@ -479,19 +473,16 @@ function uobyqa!(f, x::DenseVector{Cdouble};
     fx = Ref{Cdouble}(NaN) # to store f(x) on return
     nf = Ref{Cint}(0)      # to store number of function calls
 
-    # Create wrapper to objective function and push it on top of per-thread
-    # stack before calling optimizer.
-    fw = ObjFun(f, n, scl)        # wrapper to objective function
-    fp = _push_objfun(uobyqa, fw) # pointer to C-callable function
-    try
-        # Call low-level optimizer on the (scaled) variables.
-        isempty(scl) || _scale!(x, /, scl)
-        status = prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
-        isempty(scl) || _scale!(x, *, scl)
-        return Info(; fx = fx[], nf = nf[], status)
-    finally
-        _pop_objfun(fw)
+    # Call low-level optimizer on the scaled variables and with a wrapper to the objective
+    # function stored in the task local storage.
+    isempty(scl) || _scale!(x, /, scl)
+    fw = ObjFun(f, n, scl)   # wrapper to objective function
+    fp = _objfun_ptr(uobyqa) # pointer to C-callable function
+    status = task_local_storage(:objfun, fw) do
+        prima_uobyqa(fp, n, x, fx, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
     end
+    isempty(scl) || _scale!(x, *, scl)
+    return Info(; fx = fx[], nf = nf[], status)
 end
 
 """
@@ -535,37 +526,35 @@ function cobyla!(f, x::DenseVector{Cdouble};
     fx = Ref{Cdouble}(NaN)        # to store f(x) on return
     nf = Ref{Cint}(0)             # to store number of function calls
 
-    # Create wrapper to objective function and push it on top of per-thread
-    # stack before calling optimizer.
+    # Call low-level optimizer on the scaled variables and with a wrapper to the objective
+    # function stored in the task local storage.
+    isempty(scl) || _scale!(x, /, scl)
     fw = ObjFun(f, n, scl, c_nl_eq, length(nl_eq), c_nl_ineq, length(nl_ineq))
-    fp = _push_objfun(cobyla, fw) # pointer to C-callable function
-    try
-        # Call low-level optimizer on the (scaled) variables.
-        isempty(scl) || _scale!(x, /, scl)
-        status = prima_cobyla(length(nl_all), fp, n, x, fx, cstrv, nl_all,
-                              length(b_ineq), A_ineq, b_ineq,
-                              length(b_eq), A_eq, b_eq,
-                              xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
-        isempty(scl) || _scale!(x, *, scl)
-        # Unpack constraints.
-        if length(nl_eq) > 0
-            i = firstindex(nl_all)
-            for j in eachindex(nl_eq)
-                nl_eq[j] = nl_all[i]
-                i += 2
-            end
-        end
-        if length(nl_ineq) > 0
-            i = firstindex(nl_all) + 2*length(nl_eq)
-            for j in eachindex(nl_ineq)
-                nl_ineq[j] = nl_all[i]
-                i += 1
-            end
-        end
-        return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[], nl_eq, nl_ineq)
-    finally
-        _pop_objfun(fw)
+    fp = _objfun_ptr(cobyla) # pointer to C-callable function
+    status = task_local_storage(:objfun, fw) do
+        prima_cobyla(length(nl_all), fp, n, x, fx, cstrv, nl_all,
+                     length(b_ineq), A_ineq, b_ineq,
+                     length(b_eq), A_eq, b_eq,
+                     xl, xu, nf, rhobeg, rhoend, ftarget, maxfun, iprint)
     end
+    isempty(scl) || _scale!(x, *, scl)
+
+    # Unpack constraints.
+    if length(nl_eq) > 0
+        i = firstindex(nl_all)
+        for j in eachindex(nl_eq)
+            nl_eq[j] = nl_all[i]
+            i += 2
+        end
+    end
+    if length(nl_ineq) > 0
+        i = firstindex(nl_all) + 2*length(nl_eq)
+        for j in eachindex(nl_ineq)
+            nl_ineq[j] = nl_all[i]
+            i += 1
+        end
+    end
+    return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[], nl_eq, nl_ineq)
 end
 
 """
@@ -603,23 +592,20 @@ function lincoa!(f, x::DenseVector{Cdouble};
     fx = Ref{Cdouble}(NaN)    # to store f(x) on return
     nf = Ref{Cint}(0)         # to store number of function calls
 
-    # Create wrapper to objective function and push it on top of per-thread
-    # stack before calling optimizer.
-    fw = ObjFun(f, n, scl)        # wrapper to objective function
-    fp = _push_objfun(lincoa, fw) # pointer to C-callable function
-    try
-        # Call low-level optimizer on the (scaled) variables.
-        isempty(scl) || _scale!(x, /, scl)
-        status = prima_lincoa(fp, n, x, fx, cstrv,
-                              length(b_ineq), A_ineq, b_ineq,
-                              length(b_eq), A_eq, b_eq,
-                              xl, xu,
-                              nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
-        isempty(scl) || _scale!(x, *, scl)
-        return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[])
-    finally
-        _pop_objfun(fw)
+    # Call low-level optimizer on the scaled variables and with a wrapper to the objective
+    # function stored in the task local storage.
+    isempty(scl) || _scale!(x, /, scl)
+    fw = ObjFun(f, n, scl)   # wrapper to objective function
+    fp = _objfun_ptr(lincoa) # pointer to C-callable function
+    status = task_local_storage(:objfun, fw) do
+        prima_lincoa(fp, n, x, fx, cstrv,
+                     length(b_ineq), A_ineq, b_ineq,
+                     length(b_eq), A_eq, b_eq,
+                     xl, xu,
+                     nf, rhobeg, rhoend, ftarget, maxfun, npt, iprint)
     end
+    isempty(scl) || _scale!(x, *, scl)
+    return Info(; fx = fx[], nf = nf[], status, cstrv = cstrv[])
 end
 
 #------------------------------------------------------------------------------
@@ -751,25 +737,24 @@ end
 # the type of the user-defined Julia functions and (ii) to make possible to
 # extend `call` or `call!` at the last stage .
 
-# C-callable objective function for problems with no non-linear constraints
-# (for other algorithms than COBYLA).
+# C-callable objective function for problems with no non-linear constraints (for other
+# algorithms than COBYLA).
 function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
                  f_ptr::Ptr{Cdouble}) # (output) function value
-    # Retrieve objective function object and dispatch on its type to compute
-    # f(x).
-    f = last(_objfun_stack[Threads.threadid()])
+    # Retrieve objective function object and dispatch on its type to compute f(x).
+    f = task_local_storage(:objfun)
     unsafe_store!(f_ptr, unsafe_call(f, x_ptr))
     return nothing
 end
 
-# C-callable objective function for problems with non-linear constraints (for
-# COBYLA algorithm).
+# C-callable objective function for problems with non-linear constraints (for COBYLA
+# algorithm).
 function _objfun(x_ptr::Ptr{Cdouble}, # (input) variables
                  f_ptr::Ptr{Cdouble}, # (output) function value
                  c_ptr::Ptr{Cdouble}) # (output) constraints
-    # Retrieve objective function object and dispatch on its type to compute
-    # f(x) and the non-linear constraints.
-    f = last(_objfun_stack[Threads.threadid()])
+    # Retrieve objective function object and dispatch on its type to compute f(x) and the
+    # non-linear constraints.
+    f = task_local_storage(:objfun)
     unsafe_store!(f_ptr, unsafe_call(f, x_ptr, c_ptr))
     return nothing
 end
@@ -807,42 +792,11 @@ end
 @noinline corrupted_structure(msg::AbstractString) =
     throw(AssertionError("corrupted structure ($msg)"))
 
-# Global variable storing the per-thread stacks of objective functions indexed
-# by thread identifier and then by execution order. On start of an
-# optimization, an object linked to the user-defined objective function is
-# pushed. This object is popped out of the stack on return of the optimization
-# call, whatever happens. It is therefore necessary to wrap the call to the
-# optimization method in a `try-finally` clause.
-const _objfun_stack = Vector{Vector{ObjFun}}(undef, 0)
-
-# Private function `_get_objfun_stack` yields the stack of objective functions
-# for the caller thread.
-function _get_objfun_stack()
-    i = Threads.threadid()
-    while length(_objfun_stack) < i
-        push!(_objfun_stack, Vector{ObjFun}(undef, 0))
-    end
-    return _objfun_stack[i]
-end
-
-# Private functions `_push_objfun` and `_pop_objfun` are to be used in a
-# `try-finally` clause as explained above.
-function _push_objfun(algorithm, fw::ObjFun)
-    _objfun_ptr(::Any) =
-        @cfunction(_objfun, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}))
-    _objfun_ptr(::typeof(cobyla)) =
-        @cfunction(_objfun, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}))
-    push!(_get_objfun_stack(), fw)
-    return _objfun_ptr(algorithm)
-end
-
-function _pop_objfun(fw::ObjFun)
-    stack = _get_objfun_stack()
-    last(stack) === fw || error(
-        "objective function is not the last one in the caller thread stask")
-    resize!(stack, length(stack) - 1)
-    return nothing
-end
+# Pointer to C callable function.
+_objfun_ptr(::Any) =
+    @cfunction(_objfun, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}))
+_objfun_ptr(::typeof(cobyla)) =
+    @cfunction(_objfun, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}))
 
 function _check_rho(rhobeg, rhoend)
     isfinite(rhobeg) && rhobeg > zero(rhobeg) || throw(ArgumentError(
