@@ -7,7 +7,7 @@
 -  Use `task_local_storage` for storing the reference to the Julia objective function.
    This replaces the storage indexed by `Threads.threadid()` which is wrong because, since
    Julia 1.8, a given task can be executed by different threads in its life time. In
-   principle, this solves issue #47.
+   principle, this solves issue #37.
 
 ## Version 0.2.2 (2024-10-16)
 
