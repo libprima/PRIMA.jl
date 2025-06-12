@@ -1,5 +1,31 @@
 # User visible changes in `PRIMA.jl`
 
+## Version 0.2.2 (2024-10-16)
+
+### Changed
+
+- Update compat and continuous integration workflow.
+
+
+## Version 0.2.1 (2024-09-27)
+
+### Added
+
+- Use `CUTEst`.
+- Add tests related to issue #19.
+
+### Changed
+
+- Simplify `check_bounds` as suggested in issue #24.
+- Revise the default `maxfun` to `500*n` and default `rhoend` to `1.0e-6*rhobeg`. This
+  aligns with Powell's settings in his tests and the default settings of the Fortran code.
+  Anyway, `maxfun = 100*n` is too small for a DFO solver.
+
+### Fixed
+
+- Fix `issuccess` (issue #23).
+
+
 ## Version 0.2.0 (2023-10-23)
 
 - General method `prima(f, x0; kwds...)` which solves the problem with the most
