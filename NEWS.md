@@ -1,6 +1,6 @@
 # User visible changes in `PRIMA.jl`
 
-## Version 0.2.0
+## Version 0.2.0 (2023-10-23)
 
 - General method `prima(f, x0; kwds...)` which solves the problem with the most
   suitable Powell's algorithm (among COBYLA, LINCOA, BOBYQA, or NEWUOA)
@@ -37,7 +37,7 @@
   having approximately the same magnitude, and to adapt to heterogeneous
   variables or with different units.
 
-## Version 0.1.1
+## Version 0.1.1 (2023-10-17)
 
 - Keywords for other constraints than bounds have been renamed as
   `nonlinear_ineq` for non-linear inequality constraints, `linear_ineq` for
