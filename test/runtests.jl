@@ -251,7 +251,6 @@ end
         rhobeg = 1.0
         rhoend = 1e-5
         ftarget = -Inf
-        maxfun = 3000n
         npt = 2n + 1
         iprint = PRIMA.MSG_EXIT
 
@@ -265,6 +264,8 @@ end
         b_ineq = [6, 12, 1]
 
         @testset "$(optimizer_name(optim))" for optim in (:uobyqa, :newuoa, :bobyqa, :cobyla, :lincoa)
+            # COBYLA needs many more function evaluations than the other solvers
+            maxfun = optim == :cobyla ? 10000n : 100n
 
             println("\nUnconstrained minimization of Rosenbrock function by $(optimizer_name(optim)):")
             x0 = [-1, 2]
