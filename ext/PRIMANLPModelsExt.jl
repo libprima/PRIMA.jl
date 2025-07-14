@@ -1,10 +1,6 @@
 module PRIMANLPModelsExt
 
-if isdefined(Base, :get_extension)
-    using PRIMA, NLPModels
-else
-    using ..PRIMA, ..NLPModels
-end
+using PRIMA, NLPModels
 
 # This structure is to wrap a non-linear problem model into a callable object.
 struct ObjectiveFunction{F<:AbstractNLPModel} <: Function

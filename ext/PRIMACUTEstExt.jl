@@ -1,10 +1,6 @@
 module PRIMACUTEstExt
 
-if isdefined(Base, :get_extension)
-    using PRIMA, CUTEst
-else
-    using ..PRIMA, ..CUTEst
-end
+using PRIMA, CUTEst
 
 for func in (:uobyqa, :newuoa, :bobyqa, :lincoa, :cobyla, :prima)
     @eval function PRIMA.$(Symbol(func,"_CUTEst"))(name::AbstractString; kwargs...)

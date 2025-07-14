@@ -30,11 +30,24 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
+          - macos-13
         arch:
           - x64
-          - x86
+        include:
+          - version: '1'
+            os: ubuntu-24.04-arm
+            arch: arm64
+          - version: '1'
+            os: macos-latest
+            arch: arm64
     steps:
       - uses: actions/checkout@v4
+      - name: Install compilers
+        uses: fortran-lang/setup-fortran@main
+        with:
+          compiler: 'gcc'
+          version: '14'
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
