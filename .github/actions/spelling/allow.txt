@@ -1364,6 +1364,7 @@ lsec
 lsqminnorm
 lsqr
 ltest
+lts
 lvector
 lwidth
 macos
