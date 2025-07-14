@@ -8,9 +8,6 @@ export bobyqa, cobyla, lincoa, newuoa, prima, uobyqa, issuccess
 using TypeUtils
 using LinearAlgebra
 
-isdefined(Base, :get_extension) || using Requires
-
-
 #------------------------------------------------------------------------------
 # PUBLIC INTERFACE
 

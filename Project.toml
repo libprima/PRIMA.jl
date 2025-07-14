@@ -1,12 +1,11 @@
 name = "PRIMA"
 uuid = "0a7d04aa-8ac2-47b3-b7a7-9dbd6ad661ed"
 authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr> and contributors"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PRIMA_jll = "eead6e0c-2d5b-5641-a95c-b722de96d551"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 
 [weakdeps]
@@ -18,12 +17,11 @@ PRIMACUTEstExt = "CUTEst"
 PRIMANLPModelsExt = "NLPModels"
 
 [compat]
-CUTEst = "1.0.1"
-NLPModels = "0.21.3"
+CUTEst = "1.3.2"
+NLPModels = "0.21.5"
 PRIMA_jll = "0.7.1"
-Requires = "1"
-TypeUtils = "0.3, 1"
-julia = "1.6"
+TypeUtils = "1"
+julia = "1.10"
 
 [extras]
 CUTEst = "1b53aba6-35b6-5f92-a507-53c67d53f819"
