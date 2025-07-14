@@ -1,7 +1,6 @@
 module PRIMA
 
 using PRIMA_jll
-const libprimac = PRIMA_jll.libprimac
 include("wrappers.jl")
 
 export bobyqa, cobyla, lincoa, newuoa, prima, uobyqa, issuccess
